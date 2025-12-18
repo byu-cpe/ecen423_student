@@ -34,36 +34,18 @@ module ButtonCount(clk, btnc, btnu, led);
     logic [15:0] count_i;
     // The increment counter output from the one shot module
     logic inc_count;
+    logic btnu_sync;
     // reset signal
     logic rst;
-    // increment signals (synchronized version of btnu)
-    logic btnu_d, btnu_dd, inc;
 
     // Assign the 'rst' signal to button c
     assign rst = btnc;
 
-    // The following always block creates a "synchronizer" for the 'btnu' input.
-    // A synchronizer synchronizes the asynchronous 'btnu' input to the global
-    // clock (when you press a button you are not synchronous with anything!).
-    // This particular synchronizer is just two flip-flop in series: 'btnu_d'
-    // is the first flip-flop of the synchronizer and 'btnu_dd' is the second
-    // flip-flop of the synchronizer. You should always have a synchronizer on
-    // any button input if they are used in a sequential circuit.
-    always_ff@(posedge clk)
-        if (rst) begin
-            btnu_d <= 0;
-            btnu_dd <= 0;
-        end
-        else begin
-            btnu_d <= btnu;
-            btnu_dd <= btnu_d;
-        end
-
-    // Rename the output of the synchronizer to something more descriptive
-    assign inc = btnu_dd;
+    // Instance the synchronizer
+    synchronizer sync (.clk(clk), .rst(rst), .in(btnu), .out(btnu_sync));
 
     // Instance the OneShot module
-    OneShot os (.clk(clk), .rst(rst), .in(inc), .os(inc_count));
+    OneShot os (.clk(clk), .rst(rst), .in(btnu_sync), .os(inc_count));
 
     // 16-bit Counter. Increments once each time button is pressed.
     //

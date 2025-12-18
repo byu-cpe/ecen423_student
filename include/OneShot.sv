@@ -9,7 +9,7 @@
 * File: OneShot.sv
 *
 * Author: Professor Mike Wirthlin
-* Class: ECEN 323
+* Class: ECEN 423
 *
 * Module: OneShot
 * Description:
