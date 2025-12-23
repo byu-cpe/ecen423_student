@@ -26,9 +26,9 @@
 ****************************************************************************/
 
 module ButtonCount(
-        input wire clk,
-        input wire btnc,
-        input wire btnu,
+        input logic clk,
+        input logic btnc,
+        input logic btnu,
         output logic [15:0] led
     );
 

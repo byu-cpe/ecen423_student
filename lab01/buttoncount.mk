@@ -66,7 +66,8 @@ ButtonCount.bit: ButtonCount_synth.dcp
 # All labs must have a 'clean' rule to remove generated files. This clean rule
 # will remove all generated files for the ButtonCount design.
 clean:
-	rm -rf xsim.dir .Xil
-	rm -rf ButtonCount_synth.dcp synth_buttoncount*.log
+	rm -rf xsim.dir .Xil ButtonCount_tb.wdb xsim*.jou xelab.pb xvlog.log xvlog.pb
+	rm -f ButtonCount.wdb sim_buttoncount.log
+	rm -rf ButtonCount_synth.dcp synth_buttoncount*.log vivado*.jou vivado*.str
 	rm -rf ButtonCount.bit clockInfo.txt timing.rpt utilization.rpt implement_buttoncount.log
 	rm -rf ButtonCount.dcp implement_buttoncount*.log
