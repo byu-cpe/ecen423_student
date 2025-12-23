@@ -4,8 +4,7 @@
 # Author: Mike Wirthlin
 # Class: ECEN 423
 #
-# This .tcl script will apply the input stimulus to the circuit
-# as shown in the waveform in the lab wiki.
+# This .tcl script will apply the input stimulus to the ButtonCount design.
 #
 ##########################################################################
 
@@ -56,6 +55,6 @@ run 10 ns
 
 # Return rst to 0
 add_force btnc 0
-run 10 ns
+run 50 ns
 
 # Add additional input stimulus here

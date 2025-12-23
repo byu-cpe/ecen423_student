@@ -1,15 +1,15 @@
 // This timescale statement indicates that each time tick of the simulator
-// is 1 nanosecond and the simulator has a precision of 1 picosecond. This 
+// is 1 nanosecond and the simulator has a precision of 100 picoseconds. This 
 // is used for simulation and all of your SystemVerilog files should have 
 // this statement at the top.
-`timescale 1 ns / 1 ps
+`timescale 1 ns / 100 ps 
 
 /***************************************************************************
 *
 * File: ButtonCount.sv
 *
 * Author: Professor Mike Wirthlin
-* Class: ECEN 323, Winter Semester 2020
+* Class: ECEN 423, Winter Semester 2020
 *
 * Module: ButtonCount
 *
@@ -25,10 +25,12 @@
 *
 ****************************************************************************/
 
-module ButtonCount(clk, btnc, btnu, led);
-
-    input wire logic clk, btnc, btnu;
-    output logic [15:0] led;
+module ButtonCount(
+        input wire clk,
+        input wire btnc,
+        input wire btnu,
+        output logic [15:0] led
+    );
 
     // The internal 16-bit count signal.
     logic [15:0] count_i;
