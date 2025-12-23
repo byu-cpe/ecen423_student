@@ -2,7 +2,6 @@
 // is 1 nanosecond and the simulator has a precision of 1 picosecond. This
 // is used for simulation and all of your SystemVerilog files should have
 // this statement at the top.
-`timescale 1 ns / 1 ps
 
 /***************************************************************************
 *
