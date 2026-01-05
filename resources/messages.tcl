@@ -48,3 +48,7 @@ set_msg_config -new_severity "INFO" -id "Place 46-29"
 # Downgrade the following warning. It is given in the regfile lab when no timing constraints are used
 # WARNING: [Place 30-2953] Timing driven mode will be turned off because no critical terminals were found.
 set_msg_config -new_severity "INFO" -id "Place 30-2953"
+
+# Limit the number of backup log files to zero. This avoids
+# creation of multiple backup log files during synthesis and implementation.
+set_param general.maxBackupLogs 0
