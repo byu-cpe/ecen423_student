@@ -122,6 +122,11 @@ def get_commit_file_contents(commit, file_path):
 # Base repo test classes
 #########################################################3
 
+# TODO:
+# - all classes defined from repo_test to set name / parent on construction
+# - get rid of "module name" and just use name
+# - implement getResult() for all tests
+
 class result_type(Enum):
     SUCCESS = 1
     WARNING = 2
@@ -129,14 +134,65 @@ class result_type(Enum):
 
 class repo_test_result():
     """ Class for indicating the result of a repo test
+    test: the repo_test_unit that was executed
+    result: the restult_type
+    msg: optional message associated with the result
     """
-
     def __init__(self, test, result = result_type.SUCCESS, msg = None):
         self.test = test
         self.result = result
         self.msg = msg
 
-class repo_test():
+    def __str__(self):
+        if self.result == result_type.SUCCESS:
+            return f"Success: {self.test.getName()}"
+        elif self.result == result_type.WARNING:
+            return f"Warning: {self.test.getName()}"
+        else:
+            return f"Error: {self.test.getName()}"
+
+    def merged_result(self, other_result):
+        if other_result is None:
+            return repo_test_result(self.test, self.result, self.msg)
+        new_msg = self.msg
+        if other_result.msg is not None:
+            new_msg += "\n" + other_result.msg if new_msg is not None else other_result.msg
+        new_error = result_type.SUCCESS
+        if self.result == result_type.ERROR or other_result.result == result_type.ERROR:
+            new_error = result_type.ERROR
+        elif self.result == result_type.WARNING or other_result.result == result_type.WARNING:
+            new_error = result_type.WARNING
+        return repo_test_result(self.test, new_error, new_msg)
+
+class repo_test_unit():
+    """ Base class for repo tests. """
+    def __init__(self, rts, name):
+        self.repo_test_suite = rts
+        self.name = name
+
+    def getName(self):
+        return self.name
+
+    def perform_test(self):
+        """ This function should be overridden by a subclass. It performs the *single* test using
+        the repo_test_suite object to obtain test-specific information. 
+        Return an object of type repo_test_result. """ 
+        return None
+    
+    def initiate_test(self):
+        """
+        Like the perform_test function, this function is used to initiate tests. Unlike the
+        perform_test function, this function can be overrident to perform multiple tests 
+        (for cascading tests). The default implementation simply calls perform_test.
+        """
+        return self.perform_test()
+
+    def getResult(self):
+        """ Return the result of the last executed test. None if it has
+        not been run yet. """
+        return None
+
+class repo_test(repo_test_unit):
     """ Class for performing a test on files within a repository.
     Each instance of this class represents a _single_ test with a single
     executable. Multiple tests can be performed by creating multiple instances
@@ -144,8 +200,9 @@ class repo_test():
     This is intended as a super class for custom test modules.
     """
 
-    def __init__(self, abort_on_error=True, process_output_filename = None, timeout_seconds = 0):
+    def __init__(self, rts, name, abort_on_error=True, process_output_filename = None, timeout_seconds = 0):
         """ Initialize the test module with a repo object """
+        super().__init__(rts, name)
         self.abort_on_error = abort_on_error
         self.process_output_filename = process_output_filename
         # List of files that should be deleted after the test is done (i.e., log files)
@@ -156,7 +213,7 @@ class repo_test():
         """ returns a string indicating the name of the module. Used for logging. """
         return "BASE MODULE"
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         """ This function should be overridden by a subclass. It performs the test using
         the repo_test_suite object to obtain test-specific information. """ 
         return False
@@ -253,6 +310,49 @@ class repo_test():
             if os.path.exists(file):
                 os.remove(file) 
 
+class repo_test_linked_list(repo_test):
+    """ 
+    This is intended as a super class for custom test modules.
+    """
+
+    def __init__(self, rts, name, abort_on_error=True, process_output_filename = None, timeout_seconds = 0):
+        """ Initialize the test module with a  object """
+        super().__init__(rts, name, abort_on_error=abort_on_error, process_output_filename=process_output_filename,
+                         timeout_seconds=timeout_seconds)
+        self.previous = None
+        self.next = None
+
+    def add_next_test(self, next_test):
+        """ Add the next test in the linked list """
+        self.next = next_test
+        next_test.previous = self
+
+    def initiate_test(self):
+        cur_test = self
+        new_result = None
+        while cur_test is not None:
+            result = cur_test.perform_test()
+            new_result = result.merged_result(new_result)
+            cur_test = cur_test.next
+        return new_result
+
+class repo_test_follow(repo_test):
+
+    def __init__(self, rts, name, abort_on_error=True, process_output_filename = None, timeout_seconds = 0):
+        """ Initialize the test module with a  object """
+        super().__init__(rts, name, abort_on_error=abort_on_error, process_output_filename=process_output_filename,
+                         timeout_seconds=timeout_seconds)
+        self.sub_tests = []
+
+    def add_test(self, next_test):
+        self.sub_tests.append(next_test)
+
+    def initiate_test(self):
+        own_result = self.perform_test()
+        for sub_test in self.sub_tests:
+            sub_result = sub_test.perform_test()
+            own_result = own_result.merged_result(sub_result)
+        return own_result
 
 #########################################################3
 # Generic, non-repo test classes
@@ -318,15 +418,13 @@ class file_exists_test(repo_test):
                         repo_test_suite.print(f'Copied {orig_filename} to {new_file_path}')
                     except Exception as e:
                         repo_test_suite.print_error(f'Error copying file {orig_filename} to {new_file_path}: {e}')
-        if return_val:
-            return self.success_result()
-        return self.error_result()
+        return self.perform_following_tests(return_val)
 
 class file_regex_check(repo_test):
     ''' Checks to see if a given file has a given regular expression match.
     '''
 
-    def __init__(self, filename, regex_str, 
+    def __init__(self, rts, filename, regex_str, 
                  module_name = None, error_msg = None, 
                  error_on_match = True, abort_on_error=True):
         ''' filename: name of file to check
@@ -335,22 +433,26 @@ class file_regex_check(repo_test):
             otherwise an error is thrown if the regex does not match
         module_name: name to print for module (to override default)
             '''
-        super().__init__(abort_on_error)
+        super().__init__(rts, file_regex_check.make_name(filename, regex_str, error_on_match), abort_on_error)
         self.filename = filename
         self.regex_str = regex_str
         self.error_on_match = error_on_match
         self.module_name_str = module_name
         self.error_msg = error_msg
 
+    def make_name(filename,regex_str, error_on_match):
+        ''' Static method to make a name string '''
+        return f"File Regex Check: {filename} - {regex_str} - Error on match: {error_on_match}"
+
     def module_name(self):
         if self.module_name_str is not None:
             return self.module_name_str
         return f"File Regex Check: {self.filename} - {self.regex_str} - Error on match: {self.error_on_match}"
  
-    def perform_test(self, repo_test_suite):
-        file_path = repo_test_suite.working_path / self.filename
+    def perform_test(self):
+        file_path = self.repo_test_suite.working_path / self.filename
         if not os.path.exists(file_path):
-            repo_test_suite.print_error(f'File does not exist: {file_path}')
+            self.repo_test_suite.print_error(f'File does not exist: {file_path}')
             return self.error_result()
         # Check to see if there is a match
         regex_match = False
@@ -359,16 +461,18 @@ class file_regex_check(repo_test):
             regex_match = re.search(self.regex_str, file_contents)
         if self.error_on_match and regex_match:
             # Error if there is a match
-            repo_test_suite.print_error(f'Regex \'{self.regex_str}\' matches in file {self.filename}')
+            self.repo_test_suite.print_error(f'Regex \'{self.regex_str}\' matches in file {self.filename}')
             if self.error_msg is not None:
-                repo_test_suite.print_error(self.error_msg)
+                self.repo_test_suite.print_error(self.error_msg)
             return self.error_result()
         if not self.error_on_match and not regex_match:
-            repo_test_suite.print_error(f'Regex \'{self.regex_str}\' does not match in file {self.filename}')
+            self.repo_test_suite.print_error(f'Regex \'{self.regex_str}\' does not match in file {self.filename}')
             if self.error_msg is not None:
-                repo_test_suite.print_error(self.error_msg)
+                self.repo_test_suite.print_error(self.error_msg)
             return self.error_result()
+        self.repo_test_suite.print(f'Regex \'{self.regex_str}\' check passed in file {self.filename}')
         return self.success_result()
+
 
 class file_not_tracked_test(repo_test):
     ''' Checks to see if a given file is 'not tracked' in the repository.
@@ -376,8 +480,8 @@ class file_not_tracked_test(repo_test):
     build and not meant for tracking in the repository.
     '''
 
-    def __init__(self, files_not_tracked_list):
-        super().__init__()
+    def __init__(self, rts, files_not_tracked_list):
+        super().__init__(rts, "Files Not Tracked")
         self.files_not_tracked_list = files_not_tracked_list
 
     def module_name(self):
@@ -386,10 +490,10 @@ class file_not_tracked_test(repo_test):
             name_str += f'{repo_file}, '
         return name_str[:-2] # Remove the last two characters (', ')
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         return_val = True
-        test_dir = repo_test_suite.working_path
-        tracked_dir_files = repo_test_suite.repo.git.ls_files(test_dir).splitlines()
+        test_dir = self.repo_test_suite.working_path
+        tracked_dir_files = self.repo_test_suite.repo.git.ls_files(test_dir).splitlines()
         # Get the filenames from the full path
         tracked_dir_filenames = [pathlib.Path(file).name for file in tracked_dir_files]
         #print(tracked_dir_filenames)
@@ -398,7 +502,7 @@ class file_not_tracked_test(repo_test):
             #print("checking",not_tracked_file)
             # Check to make sure this file is not tracked
             if not_tracked_file in tracked_dir_filenames:
-                repo_test_suite.print_error(f'File should NOT be tracked in the repository: {not_tracked_file}')
+                self.repo_test_suite.print_error(f'File should NOT be tracked in the repository: {not_tracked_file}')
                 #print(repo_test_suite.repo.untracked_files)
                 return_val = False
         if return_val:
@@ -411,8 +515,8 @@ class files_tracked_test(repo_test):
     build and not meant for tracking in the repository.
     '''
 
-    def __init__(self, files_tracked_list):
-        super().__init__()
+    def __init__(self, rts, files_tracked_list):
+        super().__init__(rts, "Files Tracked")
         self.files_tracked_list = files_tracked_list
 
     def module_name(self):
@@ -421,10 +525,10 @@ class files_tracked_test(repo_test):
             name_str += f'{repo_file}, '
         return name_str[:-2] # Remove the last two characters (', ')
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         return_val = True
-        test_dir = repo_test_suite.working_path
-        tracked_dir_files = repo_test_suite.repo.git.ls_files(test_dir).splitlines()
+        test_dir = self.repo_test_suite.working_path
+        tracked_dir_files = self.repo_test_suite.repo.git.ls_files(test_dir).splitlines()
         # Get the filenames from the full path
         tracked_dir_filenames = [pathlib.Path(file).name for file in tracked_dir_files]
         #print(tracked_dir_filenames)
@@ -433,21 +537,20 @@ class files_tracked_test(repo_test):
             #print("checking",not_tracked_file)
             # Check to make sure this file is not tracked
             if tracked_file not in tracked_dir_filenames:
-                repo_test_suite.print_error(f'File should be tracked in the repository: {tracked_file}')
+                self.repo_test_suite.print_error(f'File should be tracked in the repository: {tracked_file}')
                 #print(repo_test_suite.repo.untracked_files)
                 return_val = False
         if return_val:
             return self.success_result()
         return self.error_result()
 
-class make_test(repo_test):
+class make_test(repo_test_follow):
     ''' Executes a Makefile rule in the repository.
     '''
 
-    def __init__(self, make_rule, required_input_files = None, required_build_files = None, 
+    def __init__(self, rts, make_rule, required_input_files = None, required_build_files = None, 
                  generate_output_file = True, make_output_filename=None,
-                 abort_on_error=True, timeout_seconds = 60,
-                 copy_build_files_dir = None, copy_prefice_str = None):
+                 abort_on_error=True, timeout_seconds = 60):
         ''' - make_rule: the string makefile rule that is executed. 
             - required_input_files: list of files that should exist before the make rule is executed.
             - required_build_files: list of files that should be created after the make rule is executed.
@@ -457,16 +560,22 @@ class make_test(repo_test):
               (default is None in which case no files are copied)
             - copy_prefice_str: string to prepend to the copied file name
         '''
+        super().__init__(rts, make_rule, abort_on_error=abort_on_error, process_output_filename=make_output_filename,
+            timeout_seconds=timeout_seconds)
         if generate_output_file and make_output_filename is None:
             # default makefile output filename
             make_output_filename = "make_" + make_rule.replace(" ", "_") + '.log'
-        super().__init__(abort_on_error=abort_on_error, process_output_filename=make_output_filename,
-            timeout_seconds=timeout_seconds)
         self.make_rule = make_rule
         self.required_input_files = required_input_files
+        # # add required input files to the github required files
+        # if required_input_files is not None:
+        #     rts.add_required_repo_files(required_input_files)
         self.required_build_files = required_build_files
-        self.copy_build_files_dir = copy_build_files_dir
-        self.copy_prefice_str = copy_prefice_str
+        # add required build files to the github excluded files (should not be tracked)
+        if required_build_files is not None:
+            rts.add_excluded_repo_files(required_build_files)
+        # self.copy_build_files_dir = copy_build_files_dir
+        # self.copy_prefice_str = copy_prefice_str
 
     def module_name(self):
         ''' Generates custom module name string '''
@@ -484,16 +593,16 @@ class make_test(repo_test):
             name_str += "]"
         return name_str
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         # Check to see if the required input files exist
         if self.required_input_files is not None and len(self.required_input_files) > 0:
             for file in self.required_input_files:
                 if not os.path.exists(file):
-                    repo_test_suite.print_error(f" Required file for Makefile rule '{self.make_rule}' does not exist: {file}")
+                    self.repo_test_suite.print_error(f" Required file for Makefile rule '{self.make_rule}' does not exist: {file}")
                     return self.error_result()
         # Run the rule
         cmd = ["make", self.make_rule]
-        make_return_val = self.execute_command(repo_test_suite, cmd)
+        make_return_val = self.execute_command(self.repo_test_suite, cmd)
         # Check to see if the make rule was successful
         if make_return_val != 0:
             return self.error_result()
@@ -510,13 +619,29 @@ class make_test(repo_test):
             missing_files_str = ""
             for file in missing_build_files:
                 missing_files_str += f'{file} '
-            repo_test_suite.print_error(f'Missing build files: {missing_build_files}')
-            result = self.warning_result()
-        elif self.copy_build_files_dir is not None: # all the files exist
+            error_msg = f'Missing build files: {missing_build_files}'
+            self.repo_test_suite.print_error(error_msg)
+            result = self.warning_result(msg = error_msg)
+        elif self.repo_test_suite.copy_build_files_dir is not None: # all the files exist
             #  If the build files are to be copied, copy them to the copy directory
             for build_file in self.required_build_files:
-                self.copy_build_file(repo_test_suite, build_file)
+                self.copy_build_file(self.repo_test_suite, build_file)
         return result
+
+    def rule_summary(self):
+        ''' Returns a summary string for the make rule '''
+        summary_str = f"{self.name}:"
+        if self.required_input_files is not None and len(self.required_input_files) > 0:
+            summary_str += "\n   Required Input Files: "
+            for required_file in self.required_input_files:
+                summary_str += f'{required_file}, '
+            summary_str = summary_str[:-2]
+        if self.required_build_files is not None and len(self.required_build_files) > 0:  
+            summary_str += "\n   Required Build Files: "
+            for build_file in self.required_build_files:
+                summary_str += f'{build_file}, '
+            summary_str = summary_str[:-2]
+        return summary_str
 
     def copy_build_file(self, repo_test_suite, build_file):
         ''' Copies the build file to the copy directory '''
@@ -534,7 +659,9 @@ class make_test(repo_test):
             return False
 
 class execs_exist_test(repo_test):
-    ''' Determines whether an executable exists in the path (like unix)
+    ''' Determines whether an executable exists in the path (like unix).
+    This is done to provide a more clear error message when trying to
+    run an executable that does not exist.
     '''
 
     def __init__(self, executables, abort_on_error=True):
@@ -565,26 +692,25 @@ class execs_exist_test(repo_test):
 class check_for_untracked_files(repo_test):
     ''' This tests the repo for any untracked files in the repository.
     '''
-    def __init__(self, ignore_ok = True):
+    def __init__(self, rts, ignore_ok = True):
         '''  '''
-        super().__init__()
+        super().__init__(rts, "Check for untracked GIT files")
         self.ignore_ok = ignore_ok
 
     def module_name(self):
         return "Check for untracked GIT files"
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         # TODO: look into using repo.untracked_files instead of git command
-
-        untracked_files = repo_test_suite.repo.git.ls_files("--others", "--exclude-standard")
+        untracked_files = self.repo_test_suite.repo.git.ls_files("--others", "--exclude-standard")
         if untracked_files:
-            repo_test_suite.print_error('Untracked files found in repository:')
+            self.repo_test_suite.print_error('Untracked files found in repository:')
             files = untracked_files.splitlines()
             for file in files:
-                repo_test_suite.print_error(f'  {file}')
+                self.repo_test_suite.print_error(f'  {file}')
             # return False
             return self.warning_result()
-        repo_test_suite.print('No untracked files found in repository')
+        self.repo_test_suite.print('No untracked files found in repository')
         # return True
         return self.success_result()
 
@@ -611,20 +737,21 @@ class check_for_tag(repo_test):
 class check_for_max_repo_files(repo_test):
     ''' Check to see if the repository has more than a given number of files.
     '''
-    def __init__(self, max_dir_files):
+    def __init__(self, rts, max_dir_files):
         '''  '''
-        super().__init__()
+        super().__init__(rts, f"Check for max tracked repo files:{max_dir_files}")
         self.max_dir_files = max_dir_files
 
-    def module_name(self):
-        return "Check for max tracked repo files"
+    # def module_name(self):
+    #     return "Check for max tracked repo files"
 
-    def perform_test(self, repo_test_suite):
-        tracked_files = repo_test_suite.repo.git.ls_files(repo_test_suite.relative_repo_path).split('\n')
+    def perform_test(self):
+        tracked_files = self.repo_test_suite.repo.git.ls_files(self.repo_test_suite.relative_repo_path).split('\n')
         n_tracked_files = len(tracked_files)
-        repo_test_suite.print(f"{n_tracked_files} Tracked git files in {repo_test_suite.relative_repo_path}")
+        self.repo_test_suite.print(f"{n_tracked_files} Tracked git files in {self.repo_test_suite.relative_repo_path}" +
+                                   f" (max allowed: {self.max_dir_files})")
         if n_tracked_files > self.max_dir_files:
-            repo_test_suite.print_error(f"  Too many tracked files")
+            self.repo_test_suite.print_error("  Too many tracked files")
             return self.warning_result()
         return self.success_result()
 
@@ -635,7 +762,7 @@ class check_for_ignored_files(repo_test):
     '''
     def __init__(self, check_path = None):
         '''  '''
-        super().__init__()
+        super().__init__("Check for ignored GIT files")
         self.check_path = check_path
 
     def module_name(self):
@@ -662,9 +789,9 @@ class check_for_uncommitted_files(repo_test):
     ''' Checks for uncommitted files in the repo directory.
     '''
 
-    def __init__(self):
+    def __init__(self, rts):
         '''  '''
-        super().__init__()
+        super().__init__(rts, "Check for uncommitted git files")
 
     def module_name(self):
         return "Check for uncommitted git files"
@@ -675,15 +802,15 @@ class check_for_uncommitted_files(repo_test):
         modified_files = [item.a_path for item in uncommitted_changes if item.change_type == 'M']
         return modified_files
 
-    def perform_test(self, repo_test_suite):
-        modified_files = get_uncommitted_tracked_files(repo_test_suite.repo)
+    def perform_test(self):
+        modified_files = get_uncommitted_tracked_files(self.repo_test_suite.repo)
         if modified_files:
-            repo_test_suite.print_error('Uncommitted files found in repository:')
+            self.repo_test_suite.print_error('Uncommitted files found in repository:')
             for file in modified_files:
-                repo_test_suite.print_error(f'  {file}')
+                self.repo_test_suite.print_error(f'  {file}')
             # return False
             return self.warning_result()
-        repo_test_suite.print('No uncommitted files found in repository')
+        self.repo_test_suite.print('No uncommitted files found in repository')
         # return True
         return self.success_result()
 
@@ -740,31 +867,31 @@ class list_git_commits(repo_test):
 class check_remote_origin(repo_test):
     ''' Checks to see if the remote origin matches the local.
     '''
-    def __init__(self):
+    def __init__(self, rts):
         '''  '''
-        super().__init__()
+        super().__init__(rts, "Compare local repository to remote")
 
     def module_name(self):
         return "Compare local repository to remote"
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         try:
             # 1. Check for unpushed commits
-            unpushed_commits = get_unpushed_commits(repo_test_suite.repo)
+            unpushed_commits = get_unpushed_commits(self.repo_test_suite.repo)
             if unpushed_commits:
-                repo_test_suite.print_error('Local branch has unpushed commits:')
+                self.repo_test_suite.print_error('Local branch has unpushed commits:')
                 for commit in unpushed_commits:
-                    repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
+                    self.repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
                 return self.warning_result()
             # 2. Check for unpulled commits
-            unpulled_commits = get_unpulled_commits(repo_test_suite.repo)
+            unpulled_commits = get_unpulled_commits(self.repo_test_suite.repo)
             if unpulled_commits:
-                repo_test_suite.print_error('Local branch has unpulled commits:')
+                self.repo_test_suite.print_error('Local branch has unpulled commits:')
                 for commit in unpulled_commits:
-                    repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
+                    self.repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
                 return self.warning_result()
         except Exception as e:
-            repo_test_suite.print_error(f"Error checking remote origin: {e}")
+            self.repo_test_suite.print_error(f"Error checking remote origin: {e}")
             return self.error_result()
         return self.success_result()
 
@@ -773,14 +900,14 @@ class check_remote_starter(repo_test):
     Also checks to see if the local repository has been modified differently
     from this remote starter.
     '''
-    def __init__(self, remote_name, remote_branch = None, last_date_of_remote_commit = None):
+    def __init__(self, rts, remote_name, remote_branch = "main", last_date_of_remote_commit = None):
         '''  
         remote_name: the name of the remote repository to check
         remote_branch: the branch of the remote repository to check (if None, defaults to 'main')
         last_date_of_remote_commit: the date of the last commit to check for updates (if None, defaults to currenttime)
           This parameter will only check to see if there are commits on the remote before or at this time.
         '''
-        super().__init__()
+        super().__init__(rts, f"Check for updates from remote: {remote_name}/{remote_branch}")
         self.remote_name = remote_name
         self.remote_branch = remote_branch
         if self.remote_branch is None:
@@ -789,21 +916,21 @@ class check_remote_starter(repo_test):
         if self.last_date_of_remote_commit is None:
             self.last_date_of_remote_commit = datetime.datetime.now()
 
-    def module_name(self):
-        module_str = f"Check for updates from remote: {self.remote_name}/{self.remote_branch}"
-        return module_str
+    # def module_name(self):
+    #     module_str = f"Check for updates from remote: {self.remote_name}/{self.remote_branch}"
+    #     return module_str
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         try:
             # 1. Check for unpulled commits from starter
-            unpulled_commits = get_unpulled_commits(repo_test_suite.repo, 
+            unpulled_commits = get_unpulled_commits(self.repo_test_suite.repo, 
                 self.remote_name, self.remote_branch, self.last_date_of_remote_commit)
             if unpulled_commits:
-                repo_test_suite.print_error('Remote Branch has unpulled commits:')
+                self.repo_test_suite.print_error('Remote Branch has unpulled commits:')
                 for commit in unpulled_commits:
-                    repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
+                    self.repo_test_suite.print_error(f'  - {commit.hexsha[:7]}: {commit.message.strip()}')
                 return self.warning_result()
         except Exception as e:
-            repo_test_suite.print_error(f"Error: {e}")
+            self.repo_test_suite.print_error(f"Error: {e}")
             return self.error_result()
         return self.success_result()

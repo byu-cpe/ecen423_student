@@ -32,46 +32,69 @@ class repo_test_suite_423(repo_test_suite):
         self.post_build_tests: Tests that are run after the build and before the clean (used for checking)
         self.clean_tests: Tests used to clean up and check the repository
     '''
+    DEFAULT_REMOTE_NAME = "startercode"
+    def __init__(self, repo, assignment_name, max_repo_files = 20, 
+                 summary_log_filename = None, 
 
-    def __init__(self, repo, assignment_name, max_repo_files = 20, summary_log_filename = None,
-                 required_executables = None, submit = False, starter_branch = "main",
-                 starter_check_date = None):
-        super().__init__(repo, test_name = assignment_name, summary_log_filename = summary_log_filename)
+                 required_executables = None, submit = False,
+                 starter_check_date = None, single_rule_run = None, due_date = None):
+        super().__init__(repo, test_name = assignment_name, max_repo_files = max_repo_files,
+                         starter_remote_name = repo_test_suite_423.DEFAULT_REMOTE_NAME,
+                         summary_log_filename = summary_log_filename)
+        # Information steps:
+        # - list of required repo files
+        # - list of makefile rules
+        # - Due dates
+        # Build Steps
+        # - Check environment
+        # - Ability to run a single rule
+        # - Run all tests
+        # Repo tests
+        #  (list them)
+        # Submission
+        # - Check submission status and report
+        # - Full Submission
+        #   - Check environment
+        #   - Run build steps
+        #   - Clean
+        #   - Check repository
+
         # Initialize the sets of tests
-        self.repo_tests = []
-        self.pre_build_tests = []
-        self.build_tests = []
-        self.post_build_tests = []
-        self.clean_tests = []
-        self.run_pre_build_tests = True
-        self.run_build_tests = True
-        self.run_post_build_tests = True
-        self.run_clean_tests = True
-        self.copy_file_dir = None # Location to copy generated build files
+        # Repo tests (what is in and not in the repo)
+        # - check for uncommitted files (files that should be ignored)
+        # - Check remote origin exists and has been pushed (not newer than remote)
+        # - Check for max number of files in the repo
+        # - Check to see if a specific remote exists
+        # - Check to see if a tag exists
+        # Pre Build Tests
+        # - execs_exist_test
+        # Clean tests:
+        # - check for untracked files
+        # - Run make clean
+        # - Check for ignored files
+        # Other:
+        # - execs_exist_test (Note: this in in the repo test but should be in pre-buld)
+        # self.repo_tests = []
+        # self.pre_build_tests = []
+        # self.build_tests = []
+        # self.post_build_tests = []
+        # self.clean_tests = []
+        # self.run_pre_build_tests = True
+        # self.run_build_tests = True
+        # self.run_post_build_tests = True
+        # self.run_clean_tests = True
+        self.single_rule_run = single_rule_run # Only run a single rule
+        # self.copy_file_dir = None # Location to copy generated build files
         self.prepend_file_str = None # String to prepend to the file name when copying
         self.required_executables = required_executables
         self.perform_submit = submit
         self.force = False
         self.starter_check_date = starter_check_date
+        self.due_date = due_date
         # Add tests
-        self.add_repo_tests(max_repo_files, remote_branch = starter_branch)
-        self.add_pre_build_tests()
-        self.add_clean_tests()
-
-    def add_repo_tests(self, max_repo_files, tag_str = None, check_start_code = True, 
-                            required_executables = None, remote_branch = "main"):
-        """ Add tests that check the state of the repo """
-        self.add_repo_test(repo_test.check_for_uncommitted_files())
-        self.add_repo_test(repo_test.check_remote_origin())
-        self.add_repo_test(repo_test.check_for_max_repo_files(max_repo_files))
-        if check_start_code:
-            self.add_repo_test(repo_test.check_remote_starter("startercode", 
-                    remote_branch = remote_branch,
-                    last_date_of_remote_commit = self.starter_check_date))
-        if tag_str is not None:
-            self.add_repo_test(repo_test.check_for_tag(tag_str))
-        if required_executables is not None:
-            self.add_repo_test(repo_test.execs_exist_test(required_executables))
+        # self.add_pre_build_tests()
+        # self.add_clean_tests()
+        # self.add_repo_tests(max_repo_files)
 
     def add_pre_build_tests(self, required_executables = None):
         """ Add default tests that should be executed before any building. """
@@ -99,40 +122,48 @@ class repo_test_suite_423(repo_test_suite):
     def add_clean_test(self,test):
         self.clean_tests.append(test)
 
-    def add_Makefile_rule(self, make_rule, required_input_files = [], required_build_files = [], timeout_seconds = 10 * 60):
-        ''' Add a makefile rule test '''
-        make_test = repo_test.make_test(make_rule, required_input_files = required_input_files, 
-                                        required_build_files = required_build_files,
-                                        timeout_seconds=timeout_seconds,
-                                        copy_build_files_dir = self.copy_file_dir,
-                                        copy_prefice_str = self.prepend_file_str)
-        self.add_build_test(make_test)
+    # def add_required_files(self, file_list, check_files_not_tracked = False, check_tracked_files = False):
+    #     ''' Add tests to see if a file exists.
+    #     Optionally check to make sure it is not committed in the repo (for build files)
+    #     optionally check to make sure it is committed in the repo (for required files) '''
+    #     # Add test to see if the file was generated (in the current working directory)
+    #     #check_file_test = repo_test.file_exists_test(file_list, copy_dir = self.copy_file_dir, prepend_file_str = self.prepend_file_str)
+    #     check_file_test = repo_test.file_exists_test(file_list)   # Commented out copying. No need to copy existing files, only need to copy built files
+    #     self.add_post_build_test(check_file_test)
+    #     # Add test to make sure the file is not committed in the repository
+    #     if check_files_not_tracked:
+    #         non_committed_files_test = repo_test.file_not_tracked_test(file_list)
+    #         self.add_post_build_test(non_committed_files_test)
+    #     if check_tracked_files:
+    #         committed_files_test = repo_test.files_tracked_test(file_list)
+    #         self.add_post_build_test(committed_files_test)
 
-    def add_required_files(self, file_list, check_files_not_tracked = False, check_tracked_files = False):
-        ''' Add tests to see if a file exists.
-        Optionally check to make sure it is not committed in the repo (for build files)
-        optionally check to make sure it is committed in the repo (for required files) '''
-        # Add test to see if the file was generated (in the current working directory)
-        #check_file_test = repo_test.file_exists_test(file_list, copy_dir = self.copy_file_dir, prepend_file_str = self.prepend_file_str)
-        check_file_test = repo_test.file_exists_test(file_list)   # Commented out copying. No need to copy existing files, only need to copy built files
-        self.add_post_build_test(check_file_test)
-        # Add test to make sure the file is not committed in the repository
-        if check_files_not_tracked:
-            non_committed_files_test = repo_test.file_not_tracked_test(file_list)
-            self.add_post_build_test(non_committed_files_test)
-        if check_tracked_files:
-            committed_files_test = repo_test.files_tracked_test(file_list)
-            self.add_post_build_test(committed_files_test)
-
-    def add_required_tracked_files(self, file_list):
-        self.add_required_files(file_list, check_tracked_files = True)
+    # def add_required_tracked_files(self, file_list):
+    #     self.add_required_files(file_list, check_tracked_files = True)
 
     def run_tests(self):
         """ Run all the registered tests in the test suite.
         """
         self.print_test_start_message()
+        self.top_test_set.perform_test()
+        return
+
         test_num = 1
         final_result = True
+        if self.single_rule_run is not None:
+            # Only run a single makefile rule in the current directory
+            test_to_run = None
+            for test in self.build_tests:
+                if isinstance(test, repo_test.make_test) and test.make_rule == self.single_rule_run:
+                    test_to_run = test
+                    break
+            if test_to_run is None:
+                self.print_error(f"Makefile rule '{self.single_rule_run}' not found in test suite")
+                return
+            self.print_test_status(f"Running single makefile rule '{self.single_rule_run}'")
+            result = self.execute_test_module(test_to_run)
+            # result = test_to_run.perform_test(self)
+            return result
         if self.repo_tests:
             result = self.iterate_through_tests(self.repo_tests, start_step = test_num)
             test_num += len(self.repo_tests)
@@ -298,7 +329,11 @@ class repo_test_suite_423(repo_test_suite):
             self.print_warning(f"Github Submission commit file '{file_path}' not yet created - waiting")
         return False
 
-def build_test_suite_423(assignment_name, max_repo_files = 20, start_date = None):
+def create_423_arg_parser(labname):
+    parser = repo_test_suite.create_arg_parser(description=f"Test suite for 423 Assignment: {labname}")
+    return parser
+
+def build_test_suite_423(assignment_name, max_repo_files = 20, start_date = None, due_date = None):
     """ A helper function used by 'main' functions to build a test suite based on command line arguments.
         assignment_name: the name of the assignment used for taggin (e.g. 'lab01')
         max_repo_files: the maximum number of files allowed in the lab directory of the repository
@@ -308,6 +343,7 @@ def build_test_suite_423(assignment_name, max_repo_files = 20, start_date = None
     parser = argparse.ArgumentParser(description=f"Test suite for 520 Assignment: {assignment_name}")
     parser.add_argument("--submit",  action="store_true", help="Submit the assignment to the remote repository (tag and push)")
     parser.add_argument("--repo", help="Path to the local repository to test (default is current directory)")
+    parser.add_argument("--run_rule", type=str, help="Run a single makefile rule")
     parser.add_argument("--force", action="store_true", help="Force submit (no prompt)")
     parser.add_argument("--norepo", action="store_true", help="Do not run Repo tests")
     parser.add_argument("--nobuild", action="store_true", help="Do not run build tests")
@@ -338,10 +374,12 @@ def build_test_suite_423(assignment_name, max_repo_files = 20, start_date = None
     # Build test suite
     test_suite = repo_test_suite_423(repo, assignment_name,
         max_repo_files = max_repo_files, summary_log_filename = summary_log_filename, submit = args.submit,
-        starter_branch = args.starterbranch, starter_check_date = start_date)
+        starter_check_date = start_date, due_date = due_date)
     test_suite.force = args.force
 
     # Decide which tests to run
+    if args.run_rule is not None:
+        test_suite.single_rule_run = args.run_rule
     if args.norepo:
         test_suite.run_pre_build_tests = False
     if args.nobuild:
@@ -359,37 +397,3 @@ def build_test_suite_423(assignment_name, max_repo_files = 20, start_date = None
         if args.copy_file_str:
             test_suite.prepend_file_str = args.copy_file_str
     return test_suite
-
-class get_err_git_commits(repo_test.repo_test):
-    ''' Prints the commits of the given directory in the repo.
-    '''
-    def __init__(self, min_msgs, check_path = None, check_str = "ERR"):
-        '''  '''
-        super().__init__()
-        self.check_path = check_path
-        self.min_msgs = min_msgs
-        self.check_str = check_str
-
-    def module_name(self):
-        return "Check for minimum number of error commits"
-
-    def perform_test(self, repo_test_suite):
-        if self.check_path is None:
-            self.check_path = repo_test_suite.working_path
-
-        relative_path = self.check_path.relative_to(repo_test_suite.repo_root_path)
-        repo_test_suite.print(f'Checking for ERR commits in {relative_path}')
-        commits = list(repo_test_suite.repo.iter_commits(paths=relative_path))
-        chk_commits = []
-        for commit in commits:
-            commit_message = commit.message.strip()
-            if self.check_str in commit_message:
-                chk_commits.append(commit_message)
-                print(commit_message)
-        if len(chk_commits) >= self.min_msgs:
-            # return True
-            return self.success_result()
-        else:
-            repo_test_suite.print_error(f"Insufficient number of error commits: found {len(chk_commits)} but expecting {self.min_msgs}")
-            # return False
-            return self.warning_result()
