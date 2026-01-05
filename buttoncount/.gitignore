@@ -1,0 +1,18 @@
+# Example .gitignore file for a lab submission
+
+# Ignore the xsim.dir directory used for simulation
+xsim.dir/
+.Xil/
+xvlog.pb
+xelab.pb
+vivado*.str
+
+# Waveform and simulation files
+*.wdb
+sim_buttoncount_tb*.log
+buttoncount_synth*.log
+
+# Implementation files
+buttoncount_imp*.log
+buttoncount_timing.rpt
+buttoncount_utilization.rpt
