@@ -550,7 +550,8 @@ class make_test(repo_test_follow):
 
     def __init__(self, rts, make_rule, required_input_files = None, required_build_files = None, 
                  generate_output_file = True, make_output_filename=None,
-                 abort_on_error=True, timeout_seconds = 60):
+                 abort_on_error=True, timeout_seconds = 60,
+                 copy_build_files_dir = None, copy_prefice_str = None):
         ''' - make_rule: the string makefile rule that is executed. 
             - required_input_files: list of files that should exist before the make rule is executed.
             - required_build_files: list of files that should be created after the make rule is executed.
@@ -574,8 +575,8 @@ class make_test(repo_test_follow):
         # add required build files to the github excluded files (should not be tracked)
         if required_build_files is not None:
             rts.add_excluded_repo_files(required_build_files)
-        # self.copy_build_files_dir = copy_build_files_dir
-        # self.copy_prefice_str = copy_prefice_str
+        self.copy_build_files_dir = copy_build_files_dir
+        self.copy_prefice_str = copy_prefice_str
 
     def module_name(self):
         ''' Generates custom module name string '''
@@ -622,7 +623,7 @@ class make_test(repo_test_follow):
             error_msg = f'Missing build files: {missing_build_files}'
             self.repo_test_suite.print_error(error_msg)
             result = self.warning_result(msg = error_msg)
-        elif self.repo_test_suite.copy_build_files_dir is not None: # all the files exist
+        elif self.repo_test_suite.copy_build_files_dir is not None and self.required_build_files is not None: # all the files exist
             #  If the build files are to be copied, copy them to the copy directory
             for build_file in self.required_build_files:
                 self.copy_build_file(self.repo_test_suite, build_file)

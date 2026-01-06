@@ -57,7 +57,8 @@ class repo_test_suite():
                  #log_dir = None, 
                  max_repo_files = None,
                  starter_remote_name = None,
-                #  copy_build_files_dir = None,
+                 copy_build_files_dir = None,
+                 copy_prefix_str = None,
                  ):
         # Reference to the Git repository (default is the current directory)
         self.repo = repo
@@ -87,8 +88,8 @@ class repo_test_suite():
         self.excluded_repo_file = set()  # Files that must not be present in the repo (only one instance of each)
         self.max_repo_files = max_repo_files
         self.starter_remote_name = starter_remote_name
-        self.copy_build_files_dir = None
-        self.copy_prefix_str = None # Prefice string added to copied files
+        self.copy_build_files_dir = copy_build_files_dir
+        self.copy_prefix_str = copy_prefix_str # Prefice string added to copied files
         self.test_name = test_name
         self.result_dict = {}
         # Colors
@@ -221,18 +222,15 @@ class repo_test_suite():
     #     self.add_test(self.create_repo_tests(check_start_code, tag_str))
 
     def add_makefile_test(self, make_rule, required_input_files = [], required_build_files = [],
-                          timeout_seconds = 10 * 60):
+                          timeout_seconds = 10 * 60,):
         ''' Add a makefile rule test '''
-        # Create a test set for the rule
-            # makefile_group = repo_test.repo_test_set(self, make_rule)
-            # # Add the rule to the build steps
-            # self.makefile_tests.add_test(makefile_group)
         # Create the makefile test and add it to the test set
         makefile_test = repo_test.make_test(self, make_rule, required_input_files = required_input_files, 
                                         required_build_files = required_build_files,
-                                        timeout_seconds=timeout_seconds)
+                                        timeout_seconds=timeout_seconds,
+                                        copy_build_files_dir=self.copy_build_files_dir,
+                                        copy_prefice_str=self.copy_prefix_str)
         self.makefile_tests.add_test(makefile_test)
-        # self.add_build_test(make_test)
         return makefile_test
 
     def summarize_repo_files(self):
@@ -556,9 +554,6 @@ def create_arg_parser(description):
     submission_group.add_argument("--submit",  action="store_true", help="Submit the assignment to the remote repository (tag and push)")
     submission_group.add_argument("--force", action="store_true", help="Force submit (no prompt)")
     submission_group.add_argument("--submission_status", action="store_true", help="Show submission status")
-    # Other
-    # parser.add_argument("--norepo", action="store_true", help="Do not run Repo tests")
-    # parser.add_argument("--nobuild", action="store_true", help="Do not run build tests")
     return parser
 
 def build_test_suite(assignment_name, max_repo_files = 20, start_date = None):
@@ -577,6 +572,8 @@ def build_test_suite(assignment_name, max_repo_files = 20, start_date = None):
     #     start_date = datetime.strptime(start_date, "%m/%d/%Y")
 
     # Build test suite
-    test_suite = repo_test_suite(repo, args, assignment_name, max_repo_files = max_repo_files)
+    test_suite = repo_test_suite(repo, args, assignment_name, max_repo_files = max_repo_files,
+                                 copy_build_files_dir= args.copy,
+                                 copy_prefix_str= args.copy_file_str)
     return test_suite
 
