@@ -13,11 +13,51 @@
 module tb_calc();
 
     //parameter numPulsesPerTest = 9;
-    logic tb_clk, tb_rst, tb_op;
+    logic tb_clk, tb_rst, tb_op, tb_op_d;
     logic [2:0] tb_func;
     logic [15:0] tb_count;
     logic [15:0] tb_sw;
+    logic [15:0] accumulator = 0;
+    int initialized = 0;
+    int errors = 0;
+    integer random_tests = 200;
+    // Enumerated type of button operations
+    typedef enum logic [2:0] {
+        ADD = 3'b000,
+        SUB = 3'b001,
+        AND = 3'b010,
+        OR  = 3'b011,
+        XOR = 3'b100,
+        LT  = 3'b101,
+        SLL = 3'b110,
+        SRA = 3'b111
+    } btnop_t;
+    btnop_t button_op;
 
+    typedef struct {
+        btnop_t func;
+        logic [15:0] sw;
+    } test_t;
+    test_t test_vectors [] = '{
+        '{ADD, 16'hFFF3},  // Add a negative number
+        '{SUB, 16'hFFF0},  // Subtract a larger magnitude number (result should be positive)
+        '{LT, 16'h0000},   // Less than zero? (no, should be zero)
+        '{ADD, 16'hFF32},  // Add a negative number
+        '{LT, 16'h0000},   // Less than zero? (yes, should be one)
+        '{SUB, 16'h7F3E},  // Subtract a large positive number (should be negative)
+        '{AND, 16'h00FF},  // Mask the lower 8 bits
+        '{XOR, 16'hFFFF},  // Invert all bits
+        '{AND, 16'h0000},  // Clear accumulator
+        '{OR, 16'hA5A5},   // Set specific pattern
+        '{SRA, 16'h0001},  // Arithmetic shift right by 1
+        '{SLL, 16'h0002}   // Shift left by 2
+    };
+
+    // clock generation
+    initial begin
+        tb_clk = 0;
+        forever #5 tb_clk <= ~tb_clk; // 100MHz clock
+    end
     // Instance alu module
     calc my_calc(
         .clk(tb_clk),
@@ -30,49 +70,55 @@ module tb_calc();
         .led(tb_count)
     );
 
-    // Tester module
-    ALUTester tester(
-        .clk(tb_clk),
-        .rst(tb_rst),
-        .func(tb_func),
-        .ex(tb_op),
-        .sw(tb_sw),
-        .result(tb_count)
-    );
-
-    task sim_clocks(input int clocks);
-        automatic int i;
-        for(i=0; i < clocks; i=i+1) begin
-            //@(negedge tb_clk);
-            #5 tb_clk = 1; #5 tb_clk = 0;
-        end
-    endtask
-
-    localparam SW_CLOCKS = 6;
-    localparam OP_CLOCKS = 6;
-    localparam POST_CLOCKS = 12;
-
-    // Perform a simulation operation (random values)
-    task sim_op(input [2:0] func);
+    // Perform a simulation operation
+    task automatic sim_op(input [2:0] func, logic [15:0] sw, logic op = '1);
+        logic [15:0] before_val;
+        btnop_t button_op;
+        before_val = tb_count;
+        button_op = btnop_t'(func);
+        // Wait for negative edge of clock and set inputs
+        @(negedge tb_clk);
+        $write("[%0t] led = %04h ", $time, before_val);
         tb_func = func;
+        tb_op = op;
+        tb_sw = sw;
+        if (op == '1) $write("btnd pressed. ");
+        else $write("btnd NOT pressed. ");
+        $write("sw=%04h l,c,r=%03b (%s) ", sw, button_op, button_op.name());
+        // Wait a few clock cycles for the oneshot to propagate and then test the LEDs
+        repeat(3) @(negedge tb_clk); 
+        $display("next led = %04h", tb_count);
+        if (~check_led_output()) begin
+            errors = errors + 1;
+`ifndef NO_END_ON_FIRST_ERROR
+            $display("**** Ending simulation due to error ****");
+            $finish;
+`endif
+        end
+        // $display("[%0t]  btnd pressed. sw=%04h l,c,r=%03b : before = %04h after = %04h", $time, sw, func, before_val, tb_count);
         // Set a random value to the switches
-        tb_sw = $urandom_range(0,65535);
-        sim_clocks(SW_CLOCKS);
-        tb_op = 1;
-        sim_clocks(OP_CLOCKS);
+        // tb_sw = $urandom_range(0,65535);
+        @(negedge tb_clk);
         tb_op = 0;
-        // Random number of clock cycles after deasserting op
-        sim_clocks(POST_CLOCKS);
     endtask
 
-    localparam BUTTONOP_ADD = 3'b000;
-    localparam BUTTONOP_SUB = 3'b001;
-    localparam BUTTONOP_AND = 3'b010;
-    localparam BUTTONOP_OR  = 3'b011;
-    localparam BUTTONOP_XOR = 3'b100;
-    localparam BUTTONOP_LT  = 3'b101;
-    localparam BUTTONOP_SLL = 3'b110;
-    localparam BUTTONOP_SRA = 3'b111;
+    function automatic logic check_led_output();
+        if (initialized==0) begin
+            check_led_output = 1; // Okay if not initialized
+        end
+        else begin
+            if (^tb_count === 1'bX) begin
+                check_led_output = 0;
+                $display("  **** Error: 'x' Values on LEDs");
+            end
+            else if (tb_count !== accumulator[15:0]) begin
+                check_led_output = 0;
+                $display("  **** Error: LEDs should be %04h", accumulator);
+            end
+            else
+                check_led_output = 1;
+        end
+    endfunction
 
     initial begin
         int i,j;
@@ -85,139 +131,69 @@ module tb_calc();
         #50
 
         // execute a few clocks without any reset
-        sim_clocks(3);
+        repeat(3) @(negedge tb_clk);
 
-        // Issue a reset and clock a few cycles
+        // Issue a reset and set defaults
+        $display("*** Issue Reset ***");
         tb_rst = 1;
-        sim_clocks(10);
-        tb_rst = 0;
-        // set deaults
         tb_func = 0;
         tb_op = 0;
-        sim_clocks(3);
-
-        // Test random function 10 times
-        for(j=0; j < 10; j=j+1) begin
-            sim_op($urandom_range(0,7));
-        end
-
-        // Issue reset to test reset functionality
-        tb_rst = 1;
-        sim_clocks(10);
+        repeat(10) @(negedge tb_clk);
         tb_rst = 0;
 
-        // Test all of the functions a number of times
-        for(j=0; j < $urandom_range(10,20); j=j+1) begin
-            sim_op(BUTTONOP_ADD);
-            sim_op(BUTTONOP_SUB);
-            sim_op(BUTTONOP_AND);
-            sim_op(BUTTONOP_OR);
-            sim_op(BUTTONOP_XOR);
-            sim_op(BUTTONOP_LT);
-            sim_op(BUTTONOP_SLL);
-            sim_op(BUTTONOP_SRA);
-        end
+        // Test random function 10 times with no button d pressed
+        $display("*** Change switches without pressing BTND ***");
+        for(j=0; j < 10; j=j+1)
+            sim_op($urandom_range(0,7), $urandom_range(0,65535), '0);
 
-        sim_clocks(100);
-
-        // Test random function random number of times
-        for(j=0; j < $urandom_range(50,60); j=j+1) begin
-            sim_op($urandom_range(0,7));
-        end
-
-
-        // Issue global reset
+        // Run the test vectors
+        $display("*** Run test vectors ***");
+        foreach (test_vectors[i])
+            sim_op(test_vectors[i].func, test_vectors[i].sw);
+        $display("*** Random Vectors ***");
+        for(j=0; j < random_tests; j=j+1)
+            sim_op($urandom_range(0,7), $urandom_range(0,65535), '1);
+        $display("*** Reset and random switch/buttons ***");
         tb_rst = 1;
-        sim_clocks(1);
+        repeat(5) @(negedge tb_clk);
         tb_rst = 0;
+        for(j=0; j < 10; j=j+1)
+            sim_op($urandom_range(0,7), $urandom_range(0,65535), '0);
+        // Run the test vectors after the reset for guaranteed final result
+        foreach (test_vectors[i])
+            sim_op(test_vectors[i].func, test_vectors[i].sw);
 
-        // Random delay
-        sim_clocks($urandom_range(50,150));		
-
-        $display("*** Successful simulation. Final count=%0d. Ended at %0t *** ", tb_count, $time);
+        repeat(20) @(negedge tb_clk);	
+        if (errors != 0) begin
+            $display("*** Simulation FAILED with %0d errors. Ended at %0t *** ", errors, $time);
+        end	
+        else
+            $display("===== TEST PASSED =====. Final count=%0h. Ended at %0t *** ", tb_count, $time);
         $finish;
 
     end  // end initial
 
-endmodule
-
-// Behavioral module that will test ALU
-module ALUTester(clk, rst, func, ex, sw, result);
-
-    input wire logic clk;
-    input wire logic rst;
-    input wire logic [2:0] func;
-    input wire logic ex;
-    input [15:0] sw;
-    input [15:0] result;
-
-    parameter stop_on_error = 1;
-
-    int initialized = 0;
-    int op_delay = 0;
-    reg [15:0] accumulator = -1;
-    int ex_delay = 0;
-
-    // Parameter to specify the number of clock cycles after the operation signal is
-    // asserted to check for proper behavior (to account for synchronizers and one shots)
-    localparam delay_check = 6;
-
-    always_ff@(posedge clk) begin
-        // initialized will only be set once the first reset has occured
-        // (no model checking is done until the reset has occured)
-        if (rst)
+    // accumulator
+    assign button_op = btnop_t'(tb_func);
+    always@(posedge tb_clk) begin
+        tb_op_d <= tb_op;
+        if (tb_rst) begin
+            accumulator <= 0;
             initialized <= 1;
-        // The ex_delay signal counts the number of cycles since ex has been high.
-        // It is used to indicate when to check the output after the ex signal is asserted.
-        if (ex_delay == 0 && ex)
-            ex_delay <= 1;
-        else if (ex_delay != 0 && ex_delay < delay_check)
-            ex_delay <= ex_delay + 1;
-        else
-            ex_delay <= 0;
-    end
-
-    // checking state
-    always@(negedge clk) begin
-        if (initialized && ex_delay == delay_check) begin
-            if (accumulator != result) begin
-                $display("*** Error: Module accumulator=%0x but should be %0x at time %0t", result, accumulator, $time);
-                if (stop_on_error)
-                    $fatal;
-            end
-            if (^result[0] === 1'bX) begin
-                $display("**** Error: 'x' Values on LEDs at time %0t", $time);
-                if (stop_on_error)
-                    $fatal;
-            end
-
+        end else begin
+            if (tb_op_d == 0 && tb_op == 1)
+                case (button_op)
+                    ADD: accumulator <= accumulator + tb_sw;
+                    SUB: accumulator <= accumulator - tb_sw;
+                    AND: accumulator <= accumulator & tb_sw;
+                    OR: accumulator <= accumulator | tb_sw;
+                    XOR: accumulator <= accumulator ^ tb_sw;
+                    LT: accumulator <= ($signed(accumulator) < $signed(tb_sw)) ? 32'b1 : 32'b0;
+                    SLL: accumulator <= accumulator << tb_sw[4:0];
+                    SRA: accumulator <= $unsigned($signed(accumulator) >>> tb_sw[4:0]);
+                    default: accumulator <= accumulator + tb_sw;
+                endcase
         end
     end
-
-    localparam BUTTONOP_ADD = 3'b000;
-    localparam BUTTONOP_SUB = 3'b001;
-    localparam BUTTONOP_AND = 3'b010;
-    localparam BUTTONOP_OR  = 3'b011;
-    localparam BUTTONOP_XOR = 3'b100;
-    localparam BUTTONOP_LT  = 3'b101;
-    localparam BUTTONOP_SLL = 3'b110;
-    localparam BUTTONOP_SRA = 3'b111;
-
-
-    // accumulator
-    always@(posedge clk)
-        if (rst) accumulator <= 0;
-        else if (ex_delay == 1)
-            case (func)
-                BUTTONOP_ADD: accumulator <= accumulator + sw;
-                BUTTONOP_SUB: accumulator <= accumulator - sw;
-                BUTTONOP_AND: accumulator <= accumulator & sw;
-                BUTTONOP_OR: accumulator <= accumulator | sw;
-                BUTTONOP_XOR: accumulator <= accumulator ^ sw;
-                BUTTONOP_LT: accumulator <= ($signed(accumulator) < $signed(sw)) ? 32'b1 : 32'b0;
-                BUTTONOP_SLL: accumulator <= accumulator << sw[4:0];
-                BUTTONOP_SRA: accumulator <= $unsigned($signed(accumulator) >>> sw[4:0]);
-                default: accumulator <= accumulator + sw;
-            endcase
 
 endmodule
