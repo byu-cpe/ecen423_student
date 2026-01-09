@@ -24,7 +24,7 @@ def main():
         "updownbuttoncount testbench check", error_on_match = False,
         error_msg = "updownbuttoncount testbench failed"))
     tester.add_makefile_test("updownbuttoncount_synth.dcp", ["updownbuttoncount.sv"],
-                                            ["synth_updownbuttoncount.log"])
+                                            ["updownbuttoncount_synth.log"])
     tester.add_makefile_test("updownbuttoncount.bit", ["updownbuttoncount_synth.dcp"],
                              ["updownbuttoncount.bit", "updownbuttoncount_imp.log",
                              "updownbuttoncount_timing.rpt", "updownbuttoncount_utilization.rpt"])
