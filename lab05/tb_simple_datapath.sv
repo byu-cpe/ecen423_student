@@ -2,13 +2,13 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 //
-//  Filename: tb_simple_datapath2.v
+//  Filename: tb_simple_datapath.v
 //
 //  Author: Mike Wirthlin
 //  
 //////////////////////////////////////////////////////////////////////////////////
 
-module tb_simple_datapath2 #(
+module tb_simple_datapath #(
     TB_INITIAL_PC = 32'h00200000,
     parameter instruction_memory_filename = "simple_datapath_text.mem",
     parameter data_memory_filename = "simple_datapath_data.mem",
