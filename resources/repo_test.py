@@ -208,6 +208,7 @@ class repo_test(repo_test_unit):
         # List of files that should be deleted after the test is done (i.e., log files)
         self.files_to_delete = []
         self.timeout_seconds = timeout_seconds
+        self.execute_lines = []
 
     def module_name(self):
         """ returns a string indicating the name of the module. Used for logging. """
@@ -281,6 +282,7 @@ class repo_test(repo_test_unit):
         while proc.poll() is None and output_thread.is_alive():
             try:
                 line = output_queue.get(timeout=1.0)
+                self.execute_lines.append(line)
                 line = line + "\n"
                 if repo_test_suite.print_to_stdout:
                     sys.stdout.write(line)
@@ -566,11 +568,11 @@ class make_test(repo_test_follow):
               (default is None in which case no files are copied)
             - copy_prefice_str: string to prepend to the copied file name
         '''
-        super().__init__(rts, make_rule, abort_on_error=abort_on_error, process_output_filename=make_output_filename,
-            timeout_seconds=timeout_seconds)
         if generate_output_file and make_output_filename is None:
             # default makefile output filename
             make_output_filename = "make_" + make_rule.replace(" ", "_") + '.log'
+        super().__init__(rts, make_rule, abort_on_error=abort_on_error, process_output_filename=make_output_filename,
+            timeout_seconds=timeout_seconds)
         self.make_rule = make_rule
         self.required_input_files = required_input_files
         # # add required input files to the github required files
