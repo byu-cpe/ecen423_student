@@ -52,7 +52,21 @@ def get_unpushed_commits(repo, remote_name = None, remote_branch_name = None):
     if remote_name is None:
         remote_name = "origin"
     if remote_branch_name is None:
-        remote_branch_name = "main"
+        # Try to get the current branch name; if in detached HEAD state, check for tag
+        try:
+            remote_branch_name = repo.active_branch.name
+        except TypeError:
+            # Detached HEAD state (e.g., on a tag)
+            # Check if current commit matches a tag
+            current_commit = repo.head.commit
+            tag_found = False
+            for tag in repo.tags:
+                if tag.commit == current_commit:
+                    remote_branch_name = tag.name
+                    tag_found = True
+                    break
+            if not tag_found:
+                remote_branch_name = "main"
     remote_branch = f"{remote_name}/{remote_branch_name}"  #repo.active_branch.name
     # Commit is used instead of branch name since tags don't have branch names (but they have commits)
     # local_branch = repo.active_branch.name
@@ -875,7 +889,7 @@ class list_git_commits(repo_test):
 class check_remote_origin(repo_test):
     ''' Checks to see if the remote origin matches the local.
     '''
-    def __init__(self, rts):
+    def __init__(self, rts, check_for_unpushed = True, check_for_unpulled = True):
         '''  '''
         super().__init__(rts, "Compare local repository to remote")
 
