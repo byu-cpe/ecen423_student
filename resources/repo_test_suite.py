@@ -199,8 +199,8 @@ class repo_test_suite():
 
     def add_repo_tests(self, check_start_code = True, tag_str = None):
         """ Create tests that check the state of the repo """
-        #rp_tests = repo_test.repo_test_set(self, "Repository Tests")
         self.repo_tests.add_test(repo_test.check_for_uncommitted_files(self))
+        self.repo_tests.add_test(repo_test.check_for_ignored_files(self))
         if self.max_repo_files is not None:
             self.repo_tests.add_test(repo_test.check_for_max_repo_files(self, self.max_repo_files))
         if len(self.excluded_repo_file) > 0:
