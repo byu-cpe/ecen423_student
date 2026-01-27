@@ -260,11 +260,12 @@ module tb_simple_datapath #(
         @(posedge clk);
         while(instruction != riscv_instr::EBREAK_INSTRUCTION)
             execute_instruction();
-        $finish;
+        init_control();
 
         repeat(20) @(negedge clk);
 
         $display("*** Simulation done *** %0t", $time);
+        $display("===== TEST PASSED =====");
 
         $finish;
 
