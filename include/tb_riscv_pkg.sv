@@ -8,6 +8,10 @@
 
 package tb_riscv_pkg;
 
+    // Package-level constants for use in module parameters
+    localparam logic [31:0] NOP_INSTRUCTION = 32'h00000013;       // ADDI x0, x0, 0
+    localparam logic [31:0] EBREAK_INSTRUCTION = 32'h00100073;    // EBREAK
+
     // Class that represents RISC-V ALU operations and constants
     class riscv_alu;
 
