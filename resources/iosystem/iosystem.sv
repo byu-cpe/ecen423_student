@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////
 // 
 // This file contains the I/O system logic for the RISC-V processor used 
-// in ECEN 323. 
+// in ECEN 423. 
 //
 //  To Do:
 //  - Add a second timer
@@ -18,7 +18,6 @@
 //      - Shows the PC[15:0] by default
 //    - Button for single stepping clock, res
 //    - Ability to insert a breakpoint and stop when it is reacbed
-//
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -286,7 +285,7 @@ module iosystem (clk, clkvga, rst, address, MemWrite, MemRead,
     assign seven_seg_ctrl_read = {24'h000000, seven_segment_ctrl};
 
     // Instance 4 digit seven segment controller modude
-    SevenSegmentControl4 ssc(.clk(clk), 
+    sevensegmentcontrol4 ssc(.clk(clk), 
                             .dataIn(seven_segment_reg), 
                             .digitPoint(seven_segment_ctrl[7:4]), 
                             .digitDisplay(seven_segment_ctrl[3:0]), 

@@ -34,7 +34,7 @@
  
 ****************************************************************************/
 
-module charColorMem3BRAM(clk_vga,clk_data,data_addr,vga_addr,data_we,data_write_value,data_read_value,vga_read_value);
+module charcolormem3bram(clk_vga,clk_data,data_addr,vga_addr,data_we,data_write_value,data_read_value,vga_read_value);
     input logic clk_vga;
     input logic clk_data;
     input logic [11:0] data_addr;
@@ -45,19 +45,19 @@ module charColorMem3BRAM(clk_vga,clk_data,data_addr,vga_addr,data_we,data_write_
     output logic [31:0] vga_read_value;
       
     // BRAM0: Byte 0 (bits 7:0)
-    bramMacro BRAM_inst_0 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
+    brammacro BRAM_inst_0 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
         .a_we(data_we), .a_din(data_write_value[7:0]),.a_dout(data_read_value[7:0]),.b_dout(vga_read_value[7:0]));
 
     // BRAM1: Byte 1 (bits 15:8)
-    bramMacro BRAM_inst_1 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
+    brammacro BRAM_inst_1 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
         .a_we(data_we), .a_din(data_write_value[15:8]),.a_dout(data_read_value[15:8]),.b_dout(vga_read_value[15:8]));
 
     // BRAM2: Byte 2 (bits 23:16)
-    bramMacro BRAM_inst_2 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
+    brammacro BRAM_inst_2 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
         .a_we(data_we), .a_din(data_write_value[23:16]),.a_dout(data_read_value[23:16]),.b_dout(vga_read_value[23:16]));
 
     // BRAM3: Byte 3 (bits 31:24)
-    bramMacro BRAM_inst_3 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
+    brammacro BRAM_inst_3 (.clka(clk_data), .clkb(clk_vga), .a_addr(data_addr), .b_addr(vga_addr),
         .a_we(data_we), .a_din(data_write_value[31:24]),.a_dout(data_read_value[31:24]),.b_dout(vga_read_value[31:24]));
 
 endmodule

@@ -1,15 +1,12 @@
 //////////////////////////////////////////////////////////////////////////////////
 //
-//  Filename: SevenSegmentControl4.v
+//  Filename: sevensegmentcontrol4.v
 //
 //  Author: Mike Wirthlin
 //  
-//  Description:
-//
-//     
 //////////////////////////////////////////////////////////////////////////////////
 
-module SevenSegmentControl4(clk, dataIn, digitDisplay, digitPoint, anode, segment, dp);
+module sevensegmentcontrol4(clk, dataIn, digitDisplay, digitPoint, anode, segment, dp);
 
 	parameter integer COUNT_BITS = 17;
 	
