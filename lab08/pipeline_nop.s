@@ -14,224 +14,923 @@
 #
 ###################################################################################
 
-.eqv MAJOR_VERSION 1
-.eqv MINOR_VERSION 2
-
 .text
 
-    #####################
-    # Version Instructions
-    #####################
+	# Test immediate instructions
+	addi x1, x0, 1		# r1=0+1=1 (0x00000001) positive result
+	nop
+	nop
+	addi x2, x1, -3		# r2=r1-3=1-3=-2 (0xfffffffe) negative result
+	nop
+	nop
+	andi x3, x2, -1		# AND sign extension (r3=r2 AND 0xffffffff=-2) 0xfffffffe
+	nop
+	nop
+	andi x3, x3, 0xff  	# AND no sign extension (r3=r3 AND 0xff=0xfe)
+	nop
+	nop
+	ori, x4, x3, 0x700 	# 0x7fe
+	ori, x5, x0, -0x35b	# 0xfffffcaf
+	xori x6, x2, -1		# (invert or not) 0x00000001
+	slli x7, x2, 0x1  	# 0xfffffffc
+	nop
+	nop
+	srai x8, x7, 0x1  	# 0xfffffffe
+	srli x9, x2, 0x1  	# 0x7fffffff
+	# Testing x0 register
+	addi x0, x0, 1		# x0 should remain 0
+	addi x0, x0, 1		# Do add again to make sure x0 did not change
+	# Test register instructions
+	add x7, x1, x2
+	add x8, x3, x1
+	add x9, x0, x1
+	add x10, x0, x2
+	sub x11, x1, x2
+	sub x12, x3, x1
+	sub x13, x0, x1
+	sub x14, x0, x2
+	and x15, x2, x3
+	or x16, x0, x3
+	xor x17, x0, x2
+	slt x18, x0, x1
+	slt x19, x1, x0
+	slt x20, x2, x1
+	slt x21, x1, x2
+	sll x22, x1, x1 	# 1 << 1 == 2
+	srl x23, x2, x1 	# 0xfffffffe >> 1 == 0x7fffffff
+	sra x24, x2, x1 	# 0xfffffffe >> 1 == 0xfffffffe
+	srl x25, x24, x1 	# 0xfffffffe >> 1 == 0x7fffffff	
+	# Load Instructions (data should should be in memory from data segment definitions)
+	lw x22, 0(x0)
+	lw x23, 4(x0)
+	lw x24, 8(x0)
+	lw x25, 12(x0)
+	addi x26, x0, 16
+	nop
+	nop
+	lw x27, -4(x26)
+	lw x28, -8(x26)
+	lw x29, -12(x26)
+	lw x30, -16(x26)
+	# Store Instructions
+	sw x1, 0(x0)
+	sw x2, 4(x0)
+	sw x3, 8(x0)
+	sw x4, 12(x0)
+	# Check what was written
+	lw x22, 0(x0)
+	lw x23, 4(x0)
+	lw x24, 8(x0)
+	lw x25, 12(x0)
+	# Place 0x10 (16) in x26 for negative offsets
+	addi x26, x0, 16
+	nop
+	nop
+	sw x5, -4(x26)
+	sw x6, -8(x26)
+	sw x7, -12(x26)
+	sw x8, -16(x26)
+	# Check what was written
+	lw x27, -4(x26)
+	lw x28, -8(x26)
+	lw x29, -12(x26)
+	lw x30, -16(x26)
 
-    # First two instructions are to specify the version number so
-    # we can see early in the simulation what version of the code
-    # is running
-    addi x1, x0, MAJOR_VERSION
-    addi x2, x0, MINOR_VERSION
-    
-    #####################
-    # ALU Instructions
-    #####################
+	# Misc instructions
+	addi x1, x0, 1024 		# Add immediate with pos v (x1=0x400)
+	addi x2, x0, -1			# Add immediate with neg value: x2 = 0xffffffff (-1)
+	ori x3, x0, 0xff		# Basic positive ori : x3 = 0xff
+	add x1, x1, x1			# register operation: Double x1 (x1=0x800)
+	andi x5, x2, 0xff		# and immediate pos value : x5 = 0xffffffff & 0xff = 0xff
+	sub x4, x3, x2			# Subtract : x4 = 0xff - 0xffffffff (255-(-1)) = 256 or 0x100
+	add x1, x1, x1			# Add operation: Double x1 : x1 = 0x1000
+	slti x6, x3, 0xfe 		# slti : x3 < 0xfe = false, x6=0
+	slti x7, x3, 0x101		# slti : x3 < 0x101 = true, x7=1
+	addi x0, x0, 1			# make sure you can't write to register 0. x0 = 0
+	xori x8, x2, 0x5a		# xor immediate. x8 = 0xffffffff ^ 0x5a = 0xffffffa5
+	#
+	addi x1, x0, 3
+	addi x2, x0, -500
+	nop
+	nop
+	nop
 
-    # This set of instructions will test various ALU instructions
-    # and their modes. Note that at least two instructions should
-    # be placed between dependent instructions.
-    #
-    # Possible new modes:
-    # - ori with negative constant
-    # - andi with negative constant
-    # - slti with negative constant
-    # - xori with negative constant
-    
-    addi x1, x0, 1024 		# Add immediate with pos v (x1=0x400)
-    addi x2, x0, -1			# Add immediate with neg value: x2 = 0xffffffff (-1)
-    ori x3, x0, 0xff		# Basic positive ori : x3 = 0xff
-    add x1, x1, x1			# regiser operation: Double x1 (x1=0x800)
-    andi x5, x2, 0xff		# and immediate pos value : x5 = 0xffffffff & 0xff = 0xff
-    sub x4, x3, x2			# Subtract : x4 = 0xff - 0xffffffff (255-(-1)) = 256 or 0x100
-    add x1, x1, x1			# Add operation: Double x1 : x1 = 0x1000
-    slti x6, x3, 0xfe 		# slti : x3 < 0xfe = false, x6=0
-    slti x7, x3, 0x101		# slti : x3 < 0x101 = true, x7=1
-    addi x0, x0, 1			# make sure you can't write to register 0. x0 = 0
-    xori x8, x2, 0x5a		# xor immediate. x8 = 0xffffffff ^ 0x5a = 0xffffffa5
-    # Shift instructions
-    addi x1, x0, 3
-    addi x2, x0, -500
-    nop
-    nop
-    nop
-    sll x9, x2, x1
-    slli x10, x2, 7
-    srl x11, x2, x1
-    srli x12, x2, 3
-    sra x13, x2, x1
-    srai x14, x2, 10
+	# Test Branch Instructions
+start_beq:
+	addi x1, x0, 1		# x1=1
+	nop
+	nop
+	beq x0, x1, skip1	# BEQ not taken
+	nop
+	nop
+	nop
+	beq x1, x1, forward	# BEQ taken forward to forward
+	# Shouldn't get here
+	nop
+	nop
+	nop
+backward:
+	beq x5, x5, far_forward	# BEQ taken forward to far_forward
+	# Shouldn't get here
+	nop
+	nop
+	nop
+far_backward:
+	# branch to end
+	beq x0, x0, end
+	# Shouldn't get here
+	nop
+	nop
+	nop
+forward:
+	beq x0, x1, start_beq	# BEQ not taken backwards
+	nop
+	nop
+	nop
+	beq x1, x1, backward	# BEQ taken backward to backward
+	# shouldn't get here.
+	# Lots of NOPs to provide a far branch for far_forward
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+far_forward:
+	beq x21, x21, far_backward	# far_forward: BEQ taken backward to far_backward
+	# Shouldn't get here
+	nop
+	nop
+	nop
+end:
+	# Do a zero add to all registers to verity the registers are still correct
+	addi x0, x0, 0
+	addi x1, x1, 0
+	addi x2, x2, 0
+	addi x3, x3, 0
+	addi x4, x4, 0
+	addi x5, x5, 0
+	addi x6, x6, 0
+	addi x7, x7, 0
+	addi x8, x8, 0
+	addi x9, x9, 0
+	addi x10, x10, 0
+	addi x11, x11, 0
+	addi x12, x12, 0
+	addi x13, x13, 0
+	addi x14, x14, 0
+	addi x15, x15, 0
+	addi x16, x16, 0
+	addi x17, x17, 0
+	addi x18, x18, 0
+	addi x19, x19, 0
+	addi x20, x20, 0
+	addi x21, x21, 0
+	addi x22, x22, 0
+	addi x23, x23, 0
+	addi x24, x24, 0
+	addi x25, x25, 0
+	addi x26, x26, 0
+	addi x27, x27, 0
+	addi x28, x28, 0
+	addi x29, x29, 0
+	addi x30, x30, 0
+	addi x31, x31, 0
+	nop
+	nop
+	nop
+	ebreak # End of program
+	nop
+	nop
+	nop
 
-    #####################
-    # Branch Instructions
-    #####################
-    
-    beq x0, x1, SKIP		# Branch not taken  (x0 /= x1)
-    # Need 3 NOPs after branches 
-    nop
-    nop
-    nop
+skip1:	# Shouldn't get here
+	nop
+	nop
 
-    add x15, x3, x0			# should execute this instruction  (x15 = x3 or 0xff)
-    nop
-    nop
-    
-    beq x15, x3, SKIP		# This branch should be taken (x15 = x3 = 0xff)
-    nop
-    nop
-    nop
 
-    add x15, x14, x13  		# should not be executed
-    sub x14, x12, x10  		# should not be executed
-    and x13, x11, x12  		# should not be executed
 
-SKIP:
-        
-    #####################
-    # Setup .data base pointer
-    #####################
-
-    # setup a pointer (x19) to the start of data (this is a pain 
-    # without the auipc instruction and without stalling). 
-    # Data segment is at 0x2000
-    # Intitialize to 0x400 (largest immediate)
-    addi x19, x0, 0x400		# Setup x19 with pointer to 0x2000 (start at 0x400)
-    nop
-    nop
-    slli x19, x19, 3        # Shift x19 left by 3 to generate 0x2000. Now points to data
-    nop
-    nop
-    # Setup a pointer to 0x2040 (0x2000 + 0x40 (64)) to test negative offsets
-    addi x20, x19, 64		# Create x20 as a pointer to 0x2040
-    
-    #####################
-    # Load/Store Instructions
-    #  (test positive, negative, and zero offsets)
-    #####################
-
-    # Do some loads with positive and negative offsets
-    lw x9, 0(x19)			# Load word at 0x2000+0 (0x11111111)
-    lw x10, 4(x19)			# Load word at 0x2000+4 (0x22222222)
-    lw x11, -16(x20)		# Load word at 0x2040-16 (0x88888888)
-    lw x12, -20(x20)		# Load word at 0x2040-20 (0xffffffff)
-    
-    sub x31, x10, x9		# x31 = 22222222 - 11111111 = 11111111 (x10 and x9 should be ready)	
-    lw x13, 16(x19)			# Load word (0x55555555)
-    lw x14, 20(x19)			# Load word (0x66666666)
-    beq x31, x9, SKIP2		# x31 (11111111) == x9 (11111111). Should be taken
-    nop
-    nop
-    nop
-
-    # instructions should not be executed (skipped over)
-    # Invert x11
-    xor x11, x0, x11		# Should not be executed
-    # Invert x12
-    xor x12, x0, x12		# Should not be executed
-    nop
-    nop
-    
-SKIP2:
-    sub x31, x14, x13		# SKIP2: x31=0x66666666 - 0x55555555 = 0x11111111
-    lw x15, 24(x19)			# Load word at 0x2000+24 (0x77777777)
-    lw x16, 28(x19)			# Load word at 0x2000+28 (0xffffffff)
-
-    # 
-    beq x31, x9, STORE		# 0x11111111==0x11111111 (should be taken)
-    nop
-    nop
-    nop
-    
-    beq x0, x0, ERROR		# Shouldn't get here. Will branch to error holding point
-    nop
-    nop
-    nop
-
-    # test stores
-    # (need both positive and negative stores)
-    
-STORE:	
-    # 0xffffffff to 0x0
-    # Store followed by a load
-    #  sw: IF  ID  EX  MEM(write to reg) WB
-    #  lw:     IF  ID  EX                MEM(read what was written)  WB
-
-    # sw with zero offset
-    sw x16, 0(x19)			# STORE: store x16 (0xffffffff) to address 0x2000
-    # sw with positive offset
-    # Read what we wrote
-    lw x31, 0(x19)			# Read what was written to adress 0x2000 (should be 0xffffffff)
-    # sw with positive offset
-    sw x10, 32(x19)			# store x10 (0x22222222) to address 0x2020
-    # read what we wrote
-    lw x30, 32(x19)	
-    beq x16, x31, STORE1	# see if we read what we wrote (x16=x31 - should branch)
-    nop
-    nop
-    nop
-    beq x0, x0, ERROR		# Should not get here
-    
-STORE1:
-    beq x10, x30, STORE2	# STORE1: see if we read what we wrote (x10=x31 - should branch)
-    nop
-    nop
-    nop
-    
-STORE2:
-    # Store with negative offset
-    sw x11, -20(x20)		# Store x11 (0x88888888) to 0x2040 - 20 = 0x202C
-    lw x31, -20(x20)		# Read what we wrote
-    nop
-    nop
-    beq x11, x31, END
-    nop
-    nop
-    nop
-    beq x0, x0, ERROR		#Shouldn't get here. If so, branch to ERROR
-    nop
-    nop
-    nop
-
-    # Shouldn't get here. If so, execute an illegal instruction
-    mul x1, x2, x3
-
-    
-END:	
-    ebreak					# END: ebreak: simluator will halt when it gets here
-    nop
-    nop
-    nop
-    nop
-
-ERROR:                      # This is an error condition. 
-    mul x1, x2, x3          #  Execute an invalid instruction to stop simulator
-    nop
-    nop
-    nop
-    nop
 
 # .data is at 0x2000
 # Only reserving 64 bytes (16 words)
 .data
 Data:
-    .word 0x11111111		# 0x2000
-    .word 0x22222222		# 0x2004
-    .word 0x33333333		# 0x2008
-    .word 0x44444444		# 0x200C
-    .word 0x55555555		# 0x2010
-    .word 0x66666666		# 0x2014
-    .word 0x77777777		# 0x2018
-    .word 0xffffffff		# 0x201C
-    .word 0x88888888		# 0x2020
-    .word 0x99999999		# 0x2024
-    .word 0xaaaaaaaa		# 0x2028
-    .word 0xbbbbbbbb		# 0x202C
-    .word 0xcccccccc		# 0x2030
-    .word 0xdddddddd		# 0x2034
-    .word 0xeeeeeeee		# 0x2038
-    .word 0xa5a55a5a		# 0x203C
+	.word 0x11111111		# 0x2000
+	.word 0x22222222		# 0x2004
+	.word 0x33333333		# 0x2008
+	.word 0x44444444		# 0x200C
+	.word 0x55555555		# 0x2010
+	.word 0x66666666		# 0x2014
+	.word 0x77777777		# 0x2018
+	.word 0xffffffff		# 0x201C
+	.word 0x88888888		# 0x2020
+	.word 0x99999999		# 0x2024
+	.word 0xaaaaaaaa		# 0x2028
+	.word 0xbbbbbbbb		# 0x202C
+	.word 0xcccccccc		# 0x2030
+	.word 0xdddddddd		# 0x2034
+	.word 0xeeeeeeee		# 0x2038
+	.word 0xa5a55a5a		# 0x203C
