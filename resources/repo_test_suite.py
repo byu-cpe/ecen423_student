@@ -199,8 +199,8 @@ class repo_test_suite():
 
     def add_repo_tests(self, check_start_code = True, tag_str = None):
         """ Create tests that check the state of the repo """
-        #rp_tests = repo_test.repo_test_set(self, "Repository Tests")
         self.repo_tests.add_test(repo_test.check_for_uncommitted_files(self))
+        self.repo_tests.add_test(repo_test.check_for_ignored_files(self))
         if self.max_repo_files is not None:
             self.repo_tests.add_test(repo_test.check_for_max_repo_files(self, self.max_repo_files))
         if len(self.excluded_repo_file) > 0:
@@ -377,6 +377,17 @@ class repo_test_suite():
             time.sleep(check_sleep_time)
         return False
 
+    def full_check(self):
+        # Perform an initial clean
+        self.add_clean_test()
+        # Run all of the makefile tests
+        self.add_makefile_tests()
+        # Perform a post build clean
+        self.add_clean_test()
+        # Check the repository
+        self.add_repo_tests()
+        result = self.run_tests()
+        return result
 
     def run_main(self):
         """ This function will perform the 'main' operation based on the
@@ -416,25 +427,18 @@ class repo_test_suite():
         # Submission arguments
         if self.run_time_args.submission_status:
             self.check_submission()
-        if self.run_time_args.submit:
-            # Perform an initial clean
-            self.add_clean_test()
-            # Run all of the makefile tests
-            self.add_makefile_tests()
-            # Perform a post build clean
-            self.add_clean_test()
-            # Check the repository
-            self.add_repo_tests()
-            result = self.run_tests()
+        if self.run_time_args.submit or self.run_time_args.full_check:
+            result = self.full_check()
             if result.result == result_type.SUCCESS:
-                print("ready for submission")
-                # repo_test.perform_submission(self, force = self.run_time_args.force)
-                self.submit_lab(self.test_name, force = self.run_time_args.force)
-                check_commit_date_status = self.check_commit_date(self.test_name)
-                if check_commit_date_status:
-                    self.print_test_status("Submission successful.")
-                else:
-                    self.print_error("Submission not performed due to test errors.")
+                print("Ready for submission")
+                if self.run_time_args.submit:
+                    # repo_test.perform_submission(self, force = self.run_time_args.force)
+                    self.submit_lab(self.test_name, force = self.run_time_args.force)
+                    check_commit_date_status = self.check_commit_date(self.test_name)
+                    if check_commit_date_status:
+                        self.print_test_status("Submission successful.")
+                    else:
+                        self.print_error("Submission not performed due to test errors.")
         # Cleanup test
         self.test_cleanup()
 
@@ -553,6 +557,7 @@ def create_arg_parser(description):
     env_group.add_argument("--repo", help="Path to the local repository to test (default is current directory)")
     # Submission options
     submission_group = parser.add_argument_group('Submission Options')
+    submission_group.add_argument("--full_check",  action="store_true", help="Performs full check but does not run the submit")
     submission_group.add_argument("--submit",  action="store_true", help="Submit the assignment to the remote repository (tag and push)")
     submission_group.add_argument("--force", action="store_true", help="Force submit (no prompt)")
     submission_group.add_argument("--submission_status", action="store_true", help="Show submission status")

@@ -35,7 +35,7 @@ module charGen3(clk_vga,clk_data,char_we,char_value,data_addr,pixel_x,pixel_y,da
 	logic pixel_fg;
 	logic [6:0] charToDisplay;
 
-    charColorMem3BRAM charmem (
+    charcolormem3bram charmem (
         .clk_vga(clk_vga),
         .clk_data(clk_data),
         .data_we(char_we),

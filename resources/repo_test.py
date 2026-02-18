@@ -52,7 +52,21 @@ def get_unpushed_commits(repo, remote_name = None, remote_branch_name = None):
     if remote_name is None:
         remote_name = "origin"
     if remote_branch_name is None:
-        remote_branch_name = "main"
+        # Try to get the current branch name; if in detached HEAD state, check for tag
+        try:
+            remote_branch_name = repo.active_branch.name
+        except TypeError:
+            # Detached HEAD state (e.g., on a tag)
+            # Check if current commit matches a tag
+            current_commit = repo.head.commit
+            tag_found = False
+            for tag in repo.tags:
+                if tag.commit == current_commit:
+                    remote_branch_name = tag.name
+                    tag_found = True
+                    break
+            if not tag_found:
+                remote_branch_name = "main"
     remote_branch = f"{remote_name}/{remote_branch_name}"  #repo.active_branch.name
     # Commit is used instead of branch name since tags don't have branch names (but they have commits)
     # local_branch = repo.active_branch.name
@@ -768,28 +782,28 @@ class check_for_ignored_files(repo_test):
     The intent is to make sure that these ignore files are removed through a clean
     operation. Returns true if there are no ignored files in the directory.
     '''
-    def __init__(self, check_path = None):
+    def __init__(self, rts, check_path = None):
         '''  '''
-        super().__init__("Check for ignored GIT files")
+        super().__init__(rts, "Check for ignored GIT files")
         self.check_path = check_path
 
     def module_name(self):
         return "Check for ignored GIT files"
 
-    def perform_test(self, repo_test_suite):
+    def perform_test(self):
         if self.check_path is None:
-            self.check_path = repo_test_suite.working_path
+            self.check_path = self.repo_test_suite.working_path
         # TODO: look into using repo.untracked_files instead of git command
-        repo_test_suite.print(f'Checking for ignored files at {self.check_path}')
-        ignored_files = repo_test_suite.repo.git.ls_files(self.check_path, "--others", "--ignored", "--exclude-standard")
+        self.repo_test_suite.print(f'Checking for ignored files at {self.check_path}')
+        ignored_files = self.repo_test_suite.repo.git.ls_files(self.check_path, "--others", "--ignored", "--exclude-standard")
         if ignored_files:
-            repo_test_suite.print_error('Ignored files found in repository (update your \'clean\' rule):')
+            self.repo_test_suite.print_error('Ignored files found in repository (update your \'clean\' rule):')
             files = ignored_files.splitlines()
             for file in files:
-                repo_test_suite.print_error(f'  {file}')
+                self.repo_test_suite.print_error(f'  {file}')
             # return False
             return self.warning_result()
-        repo_test_suite.print('No ignored files found in repository')
+        self.repo_test_suite.print('No ignored files found in repository')
         # return True
         return self.success_result()
 
@@ -875,7 +889,7 @@ class list_git_commits(repo_test):
 class check_remote_origin(repo_test):
     ''' Checks to see if the remote origin matches the local.
     '''
-    def __init__(self, rts):
+    def __init__(self, rts, check_for_unpushed = True, check_for_unpulled = True):
         '''  '''
         super().__init__(rts, "Compare local repository to remote")
 

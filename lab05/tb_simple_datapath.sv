@@ -144,15 +144,17 @@ module tb_simple_datapath #(
         tb_alu_Zero = (tb_alu == 0);
         $display("[%0t] EX:  dAddress=%08h zero=%b", $time, tb_alu, tb_alu_Zero);
         @(negedge clk);
-        // dAddress is the address to the data memory (or ALU result output)
-        if (tb_alu != dAddress || ^dAddress[0] === 1'bX) begin
-            $display("*** Error: dAddress=%h but expect %h at time %0t", dAddress, tb_alu, $time);
-            error();
-        end else
-        if (tb_alu_Zero != Zero || Zero == 1'bX) begin
-            $display("*** Error: Zero=%h but expect %h at time %0t", Zero,
-            tb_alu_Zero, $time);
-            error();
+        if (instruction != riscv_instr::EBREAK_INSTRUCTION) begin // ignore ebreak checks
+            // dAddress is the address to the data memory (or ALU result output)
+            if (tb_alu != dAddress || ^dAddress[0] === 1'bX) begin
+                $display("*** Error: dAddress=%h but expect %h at time %0t", dAddress, tb_alu, $time);
+                error();
+            end else
+            if (tb_alu_Zero != Zero || Zero == 1'bX) begin
+                $display("*** Error: Zero=%h but expect %h at time %0t", Zero,
+                tb_alu_Zero, $time);
+                error();
+            end
         end
         @(posedge clk);
         #1step;
@@ -211,7 +213,8 @@ module tb_simple_datapath #(
         $display("[%0t] WB:  WriteBackData=%08h", $time, tb_writeData);
         @(negedge clk);
         // Check WriteBackData
-        if (RegWrite && (WriteBackData != tb_writeData || ^WriteBackData[0] === 1'bX)) begin
+        if (instruction != riscv_instr::EBREAK_INSTRUCTION && 
+            RegWrite && (WriteBackData != tb_writeData || ^WriteBackData[0] === 1'bX)) begin
             $display("*** Error: WriteBackData=%h but expect %h at time %0t", WriteBackData,
             tb_writeData, $time);
             error();
@@ -260,11 +263,12 @@ module tb_simple_datapath #(
         @(posedge clk);
         while(instruction != riscv_instr::EBREAK_INSTRUCTION)
             execute_instruction();
-        $finish;
+        init_control();
 
         repeat(20) @(negedge clk);
 
         $display("*** Simulation done *** %0t", $time);
+        $display("===== TEST PASSED =====");
 
         $finish;
 

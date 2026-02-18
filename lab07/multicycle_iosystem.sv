@@ -8,34 +8,32 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-module multicycle_iosystem (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
-    an, seg, dp, RsRx, RsTx, vgaBlue, vgaGreen, vgaRed, Hsync, Vsync);
-
+module multicycle_iosystem #(
+    // smaller names are used for the _MEM generics to simplify the elaboration name
+    TEXT_MEM = "",
+    DATA_MEM = "",
+    USE_DEBOUNCER = 1,
+    TIMER_CLOCK_REDUCTION = 1
+) (
     // Top-level ports
-    input logic clk;
-    input logic btnc;
-    input logic btnd;
-    input logic btnl;
-    input logic btnr;
-    input logic btnu;
-    input [15:0]sw;
-    output [15:0]led;
-    output [3:0]an;
-    output [6:0]seg;
-    output logic dp;
-    output logic RsRx;
-    input logic RsTx;
-    output [3:0]vgaRed;
-    output [3:0]vgaBlue;
-    output [3:0]vgaGreen;
-    output logic Hsync;
-    output logic Vsync;
-
-    // Top-level Parameters
-    parameter TEXT_MEMORY_FILENAME = "";        // Instruction binary file
-    parameter DATA_MEMORY_FILENAME = "";        // Data segment binary file
-    parameter USE_DEBOUNCER = 1;
-    parameter TIMER_CLOCK_REDUCTION = 1;
+    input logic clk,
+    input logic btnc,
+    input logic btnd,
+    input logic btnl,
+    input logic btnr,
+    input logic btnu,
+    input logic [15:0]sw,
+    output logic [15:0]led,
+    output logic [3:0]an,
+    output logic [6:0]seg,
+    output logic dp,
+    output logic RsRx,
+    input logic RsTx,
+    output logic [3:0]vgaRed,
+    output logic [3:0]vgaBlue,
+    output logic [3:0]vgaGreen,
+    output logic Hsync,
+    output logic Vsync);
 
     // Local constants
     localparam INPUT_CLOCK_RATE = 100_000_000;
@@ -74,7 +72,7 @@ module multicycle_iosystem (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
     // Memories (instruction and data)
     logic iMemRead = 1;  // Always read instruction memory
     riscv_mem #(.INSTRUCTION_BRAMS(INSTRUCTION_BRAMS),.DATA_BRAMS(DATA_BRAMS),
-        .TEXT_MEMORY_FILENAME(TEXT_MEMORY_FILENAME),.DATA_MEMORY_FILENAME(DATA_MEMORY_FILENAME),
+        .TEXT_MEMORY_FILENAME(TEXT_MEM),.DATA_MEMORY_FILENAME(DATA_MEM),
         .TEXT_START_ADDRESS(TEXT_START_ADDRESS),.DATA_START_ADDRESS(DATA_START_ADDRESS))
         mem (.clk(clk_proc), .rst(rst), .PC(PC), .iMemRead(iMemRead), .instruction(instruction),
         .dAddress(dAddress), .MemWrite(dMemWrite), .dWriteData(dWriteData), .dReadData(dReadData) );
@@ -93,5 +91,8 @@ module multicycle_iosystem (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
         .btnc(btnc), .btnd(btnd), .btnl(btnl), .btnr(btnr), .btnu(btnu), .sw(sw), 
         .led(led), .an(an), .seg(seg), .dp(dp), .RsRx(RsRx), .RsTx(RsTx), .vgaBlue(vgaBlue),
         .vgaGreen(vgaGreen), .vgaRed(vgaRed), .Hsync(Hsync), .Vsync(Vsync));
+
+    initial // Set time format for simulation messages
+        $timeformat(-9, 0, " ns", 20);
 
 endmodule

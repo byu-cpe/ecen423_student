@@ -1,10 +1,8 @@
 ##########################################################################
 #
 # Filname: iosystem_template.tcl
-# Author: Mike Wirthlin
 #
 # This .tcl script will apply stimulus to the top-level pins of the FPGA
-# 
 #
 ##########################################################################
 
@@ -28,7 +26,10 @@ add_force btnu 0
 add_force btnd 0
 add_force sw 0
 add_force RsTx 1
-run 7 us
+run 8 us
 
-# Add your test stimulus here
+puts "Change switches and observe LEDs"
+add_force sw a5a5 -radix hex
+run 4 us
 
+exit

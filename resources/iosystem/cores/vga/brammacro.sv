@@ -1,12 +1,12 @@
 ///////////////////////////////////////////////////////////////////////////
 // 
-// bramMacro.v
+// brammacro.sv
 //
 // Macro for BRAM module instantiation (reduce ports)
 //
 ///////////////////////////////////////////////////////////////////////////
 
-module bramMacro (clka, clkb, a_addr,b_addr,a_we,a_din,a_dout,b_dout);
+module brammacro (clka, clkb, a_addr,b_addr,a_we,a_din,a_dout,b_dout);
 
   input wire clka;
   input wire clkb;

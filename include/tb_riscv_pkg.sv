@@ -8,6 +8,10 @@
 
 package tb_riscv_pkg;
 
+    // Package-level constants for use in module parameters
+    localparam logic [31:0] NOP_INSTRUCTION = 32'h00000013;       // ADDI x0, x0, 0
+    localparam logic [31:0] EBREAK_INSTRUCTION = 32'h00100073;    // EBREAK
+
     // Class that represents RISC-V ALU operations and constants
     class riscv_alu;
 
@@ -652,6 +656,10 @@ package tb_riscv_pkg;
             // Initialize memory from file if provided
             if (filename != "") begin
                 $readmemh(filename, memory);
+                if (^memory[0] === 1'bX) begin
+                    $display("**** ERROR: Testbench failed to load the memory from file %s.", filename);
+                    $finish;
+                end
             end else begin
                 for (int i=0; i<size; i=i+1)
                     memory[i] = 32'd0;
