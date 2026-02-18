@@ -29,6 +29,8 @@ main:
 	slli x7, x2, 0x1  	# 0xfffffffc
 	srai x8, x7, 0x1  	# 0xfffffffe
 	srli x9, x2, 0x1  	# 0x7fffffff
+	# Test where you read from and write to same register (test regfile operation)
+	addi x9, x9, 1
 	# Testing x0 register
 	addi x0, x0, 1		# x0 should remain 0
 	addi x0, x0, 1		# Do add again to make sure x0 did not change
