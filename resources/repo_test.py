@@ -111,8 +111,20 @@ def get_unpulled_commits(repo,  remote_name = None, remote_branch_name = None, d
 
 def get_uncommitted_tracked_files(repo):
     ''' Get a list of uncommitted files in the local repository.  '''
+    print("Checking for uncommitted changes...")
+    modified_files = set()
+    # Get unstaged changes
     uncommitted_changes = repo.index.diff(None)
     modified_files = [item.a_path for item in uncommitted_changes if item.change_type == 'M']
+    # Get staged changes not commited
+    try:
+        staged_changes = repo.index.diff('HEAD')
+        for item in staged_changes:
+            if item.change_type == 'M':
+                modified_files.append(item.a_path)
+    except Exception as e:
+        # Happens if repo has no commits yet
+        pass
     return modified_files
 
 def get_remote_tags():
