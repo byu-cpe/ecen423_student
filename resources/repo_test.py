@@ -830,14 +830,22 @@ class check_for_uncommitted_files(repo_test):
     def module_name(self):
         return "Check for uncommitted git files"
     
-    def find_uncommitted_tracked_files(repo, dir = None):
-        ''' Static function that finds uncommitted files in the repo. '''
-        uncommitted_changes = repo.index.diff(None)
-        modified_files = [item.a_path for item in uncommitted_changes if item.change_type == 'M']
+    def find_uncommitted_tracked_files(self, dir=None):
+        """Finds uncommitted files in the repo (staged and unstaged)."""
+        # Unstaged changes (working directory vs index)
+        unstaged_changes = self.repo_test_suite.repo.index.diff(None)
+        # Staged changes (HEAD vs index)
+        staged_changes = self.repo_test_suite.repo.head.commit.diff()
+        modified_files = list(
+            set(
+                [item.a_path for item in unstaged_changes]
+                + [item.a_path for item in staged_changes]
+            )
+        )
         return modified_files
 
     def perform_test(self):
-        modified_files = get_uncommitted_tracked_files(self.repo_test_suite.repo)
+        modified_files = self.find_uncommitted_tracked_files()
         if modified_files:
             self.repo_test_suite.print_error('Uncommitted files found in repository:')
             for file in modified_files:
