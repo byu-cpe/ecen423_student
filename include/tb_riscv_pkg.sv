@@ -656,6 +656,10 @@ package tb_riscv_pkg;
             // Initialize memory from file if provided
             if (filename != "") begin
                 $readmemh(filename, memory);
+                if (^memory[0] === 1'bX) begin
+                    $display("**** ERROR: Testbench failed to load the memory from file %s.", filename);
+                    $finish;
+                end
             end else begin
                 for (int i=0; i<size; i=i+1)
                     memory[i] = 32'd0;
