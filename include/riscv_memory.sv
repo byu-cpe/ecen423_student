@@ -82,8 +82,9 @@ module riscv_memory #(
         // synthesis translate_off
         if (PRINT_MEMORY_TRANSACTIONS && read_en && valid_address)
             $display("%0t:Reading 0x%h from address 0x%h",$time, memory_contents[address[MEMORY_ADDRESS_BITS-1:2]], address);
-        // synthesis translate_on			
-        read_data <= memory_contents[address[MEMORY_ADDRESS_BITS-1:2]];   
+        // synthesis translate_on
+        if (read_en)
+            read_data <= memory_contents[address[MEMORY_ADDRESS_BITS-1:2]];
     end
 
 endmodule

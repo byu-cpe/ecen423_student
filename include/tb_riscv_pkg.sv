@@ -368,6 +368,14 @@ package tb_riscv_pkg;
             return u.r.rd;
         endfunction
 
+        function logic [4:0] rs1();
+            return u.r.rs1;
+        endfunction
+
+        function logic [4:0] rs2();
+            return u.r.rs2;
+        endfunction
+
         function logic [2:0] funct3();
             return u.r.funct3;
         endfunction
@@ -415,6 +423,10 @@ package tb_riscv_pkg;
             return is_environment && (u.i.imm == IMMEDIATE_EBREAK) && (u.i.rd == 5'd0) && (u.i.rs1 == 5'd0);
         endfunction
 
+        function automatic logic is_nop();
+            return u.w == NOP_INSTRUCTION;
+        endfunction
+
         function automatic logic is_lw();
             return (opcode() == OPCODE_LW) && (funct3() == FUNC3_LW);
         endfunction
@@ -423,8 +435,17 @@ package tb_riscv_pkg;
             return (opcode() == OPCODE_SW) && (funct3() == FUNC3_SW);
         endfunction
 
+        function automatic logic is_branch();
+            return (opcode() == OPCODE_BRANCH);
+        endfunction
+
         function automatic logic is_beq();
-            return (opcode() == OPCODE_BRANCH) && (funct3() == FUNC3_BEQ);
+            return is_branch() && (funct3() == FUNC3_BEQ);
+        endfunction
+
+        function automatic logic uses_alu_result();
+            return is_sw() || is_lw() || is_branch() || 
+                (rd() != 5'd0 && (is_immediate() || is_rtype()));
         endfunction
 
         function automatic logic signed [31:0] imm_i_s32();
@@ -442,7 +463,9 @@ package tb_riscv_pkg;
 
         // Returns the instruction mnemonic
         function automatic string mnemonic();
-            if (is_rtype())
+            if (is_nop())
+                return "nop";
+            else if (is_rtype())
                 return rtype_mnemonic();
             else if (is_immediate())
                 return immediate_mnemonic();
@@ -506,7 +529,9 @@ package tb_riscv_pkg;
         function automatic string inst_str();
             string mnem;
             mnem = mnemonic();
-            if (is_rtype())
+            if (is_nop())
+                return mnem;
+            else if (is_rtype())
                 return $sformatf("%s x%0d,x%0d,x%0d", mnem, u.r.rd, u.r.rs1, u.r.rs2);
             else if (is_immediate())
                 return $sformatf("%s x%0d,x%0d,%0d (0x%08h)", mnem, u.i.rd, u.i.rs1, imm_i(),imm_i());
@@ -528,6 +553,8 @@ package tb_riscv_pkg;
     endclass
 
     // Represents the simple control signals for a risc-v instruction
+    // TODO: don't pass in instruction. Instead, have each function pass in a 
+    //   separate instruction so two different objects are not needed.
     class riscv_simple_control;
         logic       ALUSrc;
         riscv_alu::aluop_t ALUCtrl;
@@ -674,6 +701,54 @@ package tb_riscv_pkg;
         // Write register
         function automatic void write(int index, logic [31:0] data);
             memory[index] = data;
+        endfunction
+
+    endclass
+
+    // Represents logic for forwarding
+    class riscv_pipeline_forwarding;
+
+        // ALU operation type
+        typedef enum {
+            NO_FORWARD,
+            MEM_FORWARD,
+            WB_FORWARD
+        } forward_t;
+
+        function automatic forward_t forward_rs(riscv_simple_control ex_cntrl, riscv_simple_control mem_cntrl,
+            riscv_simple_control wb_cntrl, logic rs1);
+            logic [4:0] mem_rd = mem_cntrl.instr.rd();
+            logic [4:0] wb_rd = wb_cntrl.instr.rd();
+            logic [4:0] ex_src;
+            if (rs1) ex_src = ex_cntrl.instr.rs1();
+            else ex_src = ex_cntrl.instr.rs2();
+            if (mem_cntrl.RegWrite && mem_rd != 0 && mem_rd == ex_src)
+                return MEM_FORWARD;
+            else if (wb_cntrl.RegWrite && wb_rd != 0 && wb_rd == ex_src)
+                return WB_FORWARD;
+            else
+                return NO_FORWARD;
+        endfunction
+
+        function automatic forward_t forward_rs1(riscv_simple_control ex_cntrl, riscv_simple_control mem_cntrl,
+            riscv_simple_control wb_cntrl);
+            return forward_rs(ex_cntrl, mem_cntrl, wb_cntrl, 1'b1);
+        endfunction
+
+        function automatic forward_t forward_rs2(riscv_simple_control ex_cntrl, riscv_simple_control mem_cntrl,
+            riscv_simple_control wb_cntrl);
+            return forward_rs(ex_cntrl, mem_cntrl, wb_cntrl, 1'b0);
+        endfunction
+
+        // See if there is a load-use hazard between the current instruction in ID
+        // the next instruction in EX
+        function logic load_use_condition(riscv_instr id_inst, riscv_instr ex_inst);
+            logic [4:0] ex_rd = ex_inst.rd();
+            if (ex_inst.is_lw() && 
+                ((ex_inst.rd() == id_inst.rs1()) || ex_inst.rd() == id_inst.rs2()))
+                return 1'b1;
+            else
+                return 1'b0;
         endfunction
 
     endclass
