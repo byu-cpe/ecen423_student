@@ -35,6 +35,9 @@ add_force RsTx 1
 
 # Run the simulator until the screen has been cleared
 run 984970 ns
-    
-# Add your test stimulus here
+
+# Put your test stimulus here
+
+# Exit when done
+exit
 
