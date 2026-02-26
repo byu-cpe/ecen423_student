@@ -13,7 +13,8 @@ module multicycle_iosystem #(
     TEXT_MEM = "",
     DATA_MEM = "",
     USE_DEBOUNCER = 1,
-    TIMER_CLOCK_REDUCTION = 1
+    TIMER_CLOCK_REDUCTION = 1,
+    DEBOUNCE_DELAY_US = 10;
 ) (
     // Top-level ports
     input logic clk,
