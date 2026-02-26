@@ -47,7 +47,6 @@ module multicycle_iosystem #(
     localparam IO_START_ADDRESS = 32'h00007f00;
     localparam VGA_START_ADDRESS = 32'h00008000;
     localparam PROC_CLOCK_RATE = INPUT_CLOCK_RATE / PROC_CLK_DIVIDE;
-    localparam DEBOUNCE_DELAY_US = 1;
     
     // Module Signals
     logic clk_proc, clk_vga, rst;
