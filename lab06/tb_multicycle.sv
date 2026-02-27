@@ -172,6 +172,7 @@ module riscv_simple_datapath_model #(
         regfile = new();
     end
 
+    assign dReadData = dReadData_i;
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             // Internal signals
@@ -191,7 +192,7 @@ module riscv_simple_datapath_model #(
         end else if (initialized === 1'b1) begin
             MemRead_i <= 0;
             MemWrite_i <= 0;
-            dReadData <= 32'hxxxxxxxx;
+            // dReadData <= 32'hxxxxxxxx;
             case (current_stage)
                 IF: begin // End of IF stage/start of ID stage
                     #1step;
@@ -218,8 +219,8 @@ module riscv_simple_datapath_model #(
                     #1step;
                     current_stage <= WB;
                     // Display valid read data only on MemRead (during WB stage)
-                    if (riscv_ctrl.MemRead)
-                        dReadData <= dReadData_i;
+                    // if (riscv_ctrl.MemRead)
+                    //     dReadData <= dReadData_i;
                     // // Write Memory
                     // if (riscv_ctrl.MemWrite) begin
                     //     data_mem.write(tb_alu >> 2, readB);
@@ -227,6 +228,8 @@ module riscv_simple_datapath_model #(
                 end
                 WB: begin
                     #1step;
+                    // if (riscv_ctrl.MemRead)
+                    //     dReadData <= dReadData_i;
                     current_stage <= IF;
                     instruction_count = instruction_count + 1;
                     if (RegWrite)
