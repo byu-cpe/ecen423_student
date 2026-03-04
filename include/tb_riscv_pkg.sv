@@ -121,6 +121,9 @@ package tb_riscv_pkg;
         static const logic[6:0] OPCODE_LW = 7'b0000011;
         static const logic[6:0] OPCODE_SW = 7'b0100011;
         static const logic[6:0] OPCODE_BRANCH = 7'b1100011;
+        static const logic[6:0] OPCODE_LUI = 7'b0110111;
+        static const logic[6:0] OPCODE_JAL = 7'b1101111;
+        static const logic[6:0] OPCODE_JALR = 7'b1100111;
         static const logic[6:0] OPCODE_ENVIRONMENT = 7'b1110011;
 
         static const logic[6:0] FUNC3_MASK = 32'h00007000; // bits [14:12]
@@ -137,6 +140,10 @@ package tb_riscv_pkg;
         static const logic[2:0] FUNC3_LW  = 3'b010;
         static const logic[2:0] FUNC3_SW  = 3'b010;
         static const logic[2:0] FUNC3_BEQ  = 3'b000;
+        static const logic[2:0] FUNC3_BNE  = 3'b001;
+        static const logic[2:0] FUNC3_BLT  = 3'b100;
+        static const logic[2:0] FUNC3_BGE  = 3'b101;
+        static const logic[2:0] FUNC3_JALR  = 3'b000;
 
         static const logic [11:0] IMMEDIATE_ECALL = 12'h000;
         static const logic [11:0] IMMEDIATE_EBREAK = 12'h001;
@@ -443,9 +450,40 @@ package tb_riscv_pkg;
             return is_branch() && (funct3() == FUNC3_BEQ);
         endfunction
 
+        function automatic logic is_bne();
+            return is_branch() && (funct3() == FUNC3_BNE);
+        endfunction
+
+        function automatic logic is_blt();
+            return is_branch() && (funct3() == FUNC3_BLT);
+        endfunction
+
+        function automatic logic is_bge();
+            return is_branch() && (funct3() == FUNC3_BGE);
+        endfunction
+
+        function automatic logic is_lui();
+            return (opcode() == OPCODE_LUI);
+        endfunction
+
+        function automatic logic is_jal();
+            return (opcode() == OPCODE_JAL);
+        endfunction
+
+        function automatic logic is_jalr();
+            return (opcode() == OPCODE_JALR && funct3() == FUNC3_JALR);
+        endfunction
+
+        function automatic logic is_jump();
+            return is_jal() || is_jalr();
+        endfunction
+
         function automatic logic uses_alu_result();
-            return is_sw() || is_lw() || is_branch() || 
+            int result = is_sw() || is_lw() || is_branch() || 
                 (rd() != 5'd0 && (is_immediate() || is_rtype()));
+            // extended instructions
+            result = result || is_lui();
+            return result;
         endfunction
 
         function automatic logic signed [31:0] imm_i_s32();
@@ -460,9 +498,23 @@ package tb_riscv_pkg;
             return $signed({ {19{u.b.imm12}}, u.b.imm11, u.b.imm10_5, u.b.imm4_1, 1'b0 });
         endfunction
 
+        function automatic branch_taken(logic [31:0] alu_val);
+            if (!is_branch())
+                return 0; // not a branch
+            if (is_beq())
+                return (alu_val == 0);
+            else if (is_bne())
+                return (alu_val != 0);
+            else if (is_blt())
+                return (alu_val[31]); // true for negative numbers
+            else if (is_bge())
+                return !alu_val[31]; // false for negative numbers
+            else
+                return 0; // not a branch
+        endfunction
 
         // Returns the instruction mnemonic
-        function automatic string mnemonic();
+        function automatic string mnemonic(extended_instructions = 0);
             if (is_nop())
                 return "nop";
             else if (is_rtype())
@@ -477,6 +529,21 @@ package tb_riscv_pkg;
                 return "sw";
             else if (is_beq())
                 return "beq";
+            // Check for extended instructions only used in lab 11 and beyond
+            if (extended_instructions) begin
+                if (is_bne())
+                    return "bne";
+                else if (is_blt())
+                    return "blt";
+                else if (is_bge())
+                    return "bge";
+                else if (is_lui())
+                    return "lui";
+                else if (is_jal())
+                    return "jal";
+                else if (is_jalr())
+                    return "jalr";
+            end
             return "UNDEFINED";
         endfunction
 
@@ -526,9 +593,9 @@ package tb_riscv_pkg;
         endfunction
 
         // Returns the decoded instruction string
-        function automatic string inst_str();
+        function automatic string inst_str(extended_instructions = 0);
             string mnem;
-            mnem = mnemonic();
+            mnem = mnemonic(extended_instructions);
             if (is_nop())
                 return mnem;
             else if (is_rtype())
@@ -543,7 +610,25 @@ package tb_riscv_pkg;
                 return $sformatf("beq x%0d,x%0d,%0d", u.b.rs1, u.b.rs2, imm_b_s32());
             else if (is_ebreak())
                 return "ebreak";
+            if (extended_instructions) begin
+                if (is_bne())
+                    return $sformatf("bne x%0d,x%0d,%0d", u.b.rs1, u.b.rs2, imm_b_s32());
+                else if (is_blt())
+                    return $sformatf("blt x%0d,x%0d,%0d", u.b.rs1, u.b.rs2, imm_b_s32());
+                else if (is_bge())
+                    return $sformatf("bge x%0d,x%0d,%0d", u.b.rs1, u.b.rs2, imm_b_s32());
+                else if (is_lui())
+                    return $sformatf("lui x%0d,0x%08h", u.u.rd, imm_u());
+                else if (is_jal())
+                    return $sformatf("jal x%0d,%0d", u.j.rd, imm_j());
+                else if (is_jalr())
+                    return $sformatf("jalr x%0d,x%0d,%0d", u.i.rd, u.i.rs1, imm_i_s32());
+            end
             return $sformatf("UNDEFINED Instruction %s opcode 0x%0x", mnem, u.r.opcode);
+        endfunction
+
+        function automatic string ext_inst_str();
+            return inst_str(1);
         endfunction
 
         function automatic string inst_fields();
@@ -577,11 +662,11 @@ package tb_riscv_pkg;
             MemtoReg = 0;
             // RegWrite value: rtype, immediate, and lw
             if (instr.is_rtype() || instr.is_immediate() ||
-                instr.is_lw())
+                instr.is_lw() || instr.is_lui() || instr.is_jal() || instr.is_jalr())
                 RegWrite = '1;
-            // ALUSrc: immediate, lw, and sw
+            // ALUSrc: immediate, lw, and sw and lui
             if (instr.is_immediate() ||
-                instr.is_lw() || instr.is_sw())
+                instr.is_lw() || instr.is_sw() || instr.is_lui())
                 ALUSrc = '1;
             // MemWrite: sw
             if (instr.is_sw())
@@ -598,7 +683,9 @@ package tb_riscv_pkg;
             // ALU control
             if (instr.is_lw() || instr.is_sw())
                 ALUCtrl  = riscv_alu::OP_ADD;
-            else if (instr.is_beq())
+            else if (instr.is_lui())
+                ALUCtrl  = riscv_alu::OP_ADD;
+            else if (instr.is_branch())
                 ALUCtrl  = riscv_alu::OP_SUB;
             else begin
                 case (instr.funct3())
@@ -629,6 +716,8 @@ package tb_riscv_pkg;
             else begin
                 if (instr.is_sw())
                     return instr.imm_s(); // store instruction immediate
+                else if (instr.is_lui())
+                    return instr.imm_u(); // lui instruction immediate
                 else //
                     return instr.imm_i(); // conventional immediate
             end
@@ -720,6 +809,8 @@ package tb_riscv_pkg;
             logic [4:0] mem_rd = mem_cntrl.instr.rd();
             logic [4:0] wb_rd = wb_cntrl.instr.rd();
             logic [4:0] ex_src;
+            if (ex_cntrl.instr.is_lui())
+                return NO_FORWARD; // LUI doesn't use rs1 or rs2
             if (rs1) ex_src = ex_cntrl.instr.rs1();
             else ex_src = ex_cntrl.instr.rs2();
             if (mem_cntrl.RegWrite && mem_rd != 0 && mem_rd == ex_src)
