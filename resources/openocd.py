@@ -26,7 +26,7 @@ def main():
 
 	# Make sure the bitfile exists
 	if not os.path.exists(args.filename):
-		print("File",args.filename,"does not exis")
+		print("File",args.filename,"does not exist")
 		return 1
 
 	# Create temporary ocd file

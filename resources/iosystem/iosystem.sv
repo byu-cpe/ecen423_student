@@ -432,6 +432,9 @@ module iosystem (clk, clkvga, rst, address, MemWrite, MemRead,
 
     // BEGIN_SIM_MODEL
     // synthesis translate_off
+    initial
+        $timeformat(-9, 0, " ns", 20);
+
     //$timeformat(-9, 0, "ns", 20);
 
     ////////////////////////////////////////////////////////////////////
