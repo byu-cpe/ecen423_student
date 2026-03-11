@@ -6,35 +6,36 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-module riscv_io_final (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
-    an, seg, dp, RsRx, RsTx, vgaBlue, vgaGreen, vgaRed, Hsync, Vsync);
-
-    // Top-level ports
-    input logic clk;
-    input logic btnc;
-    input logic btnd;
-    input logic btnl;
-    input logic btnr;
-    input logic btnu;
-    input [15:0]sw;
-    output [15:0]led;
-    output [3:0]an;
-    output [6:0]seg;
-    output logic dp;
-    output logic RsRx;          // Transmistter (output) from the Basys3 (name reflects view from FTDI chip)
-    input logic RsTx;           // Receiver (input) to the Basys3 (name reflects view from FTDI chip)
-    output [3:0]vgaRed;
-    output [3:0]vgaBlue;
-    output [3:0]vgaGreen;
-    output logic Hsync;
-    output logic Vsync;
-
+module riscv_io_final #(
     // Top-level Parameters
-    parameter TEXT_MEMORY_FILENAME = "final_iosystem_text.mem";        // Instruction binary file
-    parameter DATA_MEMORY_FILENAME = "final_iosystem_data.mem";        // Data segment binary file
-    parameter USE_DEBOUNCER = 1;
-    parameter TIMER_CLOCK_REDUCTION = 1;
-    parameter PRINT_DATA_MEMORY_TRANSACTIONS = 1;
+    TEXT_MEM = "final_iosystem_text.mem",        // Instruction binary file
+    DATA_MEM = "final_iosystem_data.mem",        // Data segment binary file
+    USE_DEBOUNCER = 1,
+    DEBOUNCE_DELAY_US = 35,
+    TIMER_CLOCK_REDUCTION = 1,
+    PRINT_DATA_MEMORY_TRANSACTIONS = 1
+    )
+    (
+    // Top-level ports
+    input logic clk,
+    input logic btnc,
+    input logic btnd,
+    input logic btnl,
+    input logic btnr,
+    input logic btnu,
+    input [15:0]sw,
+    output [15:0]led,
+    output [3:0]an,
+    output [6:0]seg,
+    output logic dp,
+    output logic RsRx,          // Transmistter (output) from the Basys3 (name reflects view from FTDI chip)
+    input logic RsTx,           // Receiver (input) to the Basys3 (name reflects view from FTDI chip)
+    output [3:0]vgaRed,
+    output [3:0]vgaBlue,
+    output [3:0]vgaGreen,
+    output logic Hsync,
+    output logic Vsync);
+
  
     // Local constants
     localparam INPUT_CLOCK_RATE = 100_000_000;
@@ -47,7 +48,6 @@ module riscv_io_final (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
     localparam IO_START_ADDRESS = 32'h00007f00;
     localparam VGA_START_ADDRESS = 32'h00008000;
     localparam PROC_CLOCK_RATE = INPUT_CLOCK_RATE / PROC_CLK_DIVIDE;
-    localparam DEBOUNCE_DELAY_US = 2;
     
     // Module Signals
     logic clk_proc, clk_vga, rst;
@@ -74,7 +74,7 @@ module riscv_io_final (clk, btnc, btnd, btnl, btnr, btnu, sw, led,
 
     // Memories (instruction and data)
     riscv_mem #(.INSTRUCTION_BRAMS(INSTRUCTION_BRAMS),.DATA_BRAMS(DATA_BRAMS),
-        .TEXT_MEMORY_FILENAME(TEXT_MEMORY_FILENAME),.DATA_MEMORY_FILENAME(DATA_MEMORY_FILENAME),
+        .TEXT_MEMORY_FILENAME(TEXT_MEM),.DATA_MEMORY_FILENAME(DATA_MEM),
         .TEXT_START_ADDRESS(TEXT_START_ADDRESS),.DATA_START_ADDRESS(DATA_START_ADDRESS),
         .PRINT_DATA_MEMORY_TRANSACTIONS(PRINT_DATA_MEMORY_TRANSACTIONS)
         )

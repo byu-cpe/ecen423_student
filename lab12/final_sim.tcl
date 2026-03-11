@@ -28,18 +28,30 @@ add_force sw 0
 add_force RsTx 1
 
 # Simulate the starting setup instructions
-run 10 us
+puts "Startup instructions"
+run 4 us
 
 # Simulate the btnr being pressed
+puts "Simulating btnr being pressed"
 add_force btnr 1
-run 10 us
+run 4 us
 add_force btnr 0
-run 20 us
+run 1 us
 
 # Simulate the btnd being pressed
+puts "Simulating btnd being pressed"
 add_force btnd 1
-run 10 us
+run 4 us
 add_force btnd 0
-run 20 us
+run 1 us
 
-run 100 us
+# Simulate the btnd being pressed
+puts "Simulating btnd being pressed"
+add_force btnd 1
+run 4 us
+add_force btnd 0
+run 1 us
+
+run 10 us
+
+exit
