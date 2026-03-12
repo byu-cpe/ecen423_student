@@ -16,7 +16,7 @@ def main():
     tester.add_required_repo_files(["vga_sim_new.tcl", "vga.jpg", "move_char.s"])
     sim_test1 = tester.add_makefile_test("sim_forwarding_iosystem_tcl", [], ["sim_forwarding_iosystem_tcl.log"])
     sim_test1.add_test(repo_test.file_regex_check(tester, "sim_forwarding_iosystem_tcl.log",
-        "Writing 0x00000039 to VGA at address 0x00008004",
+        "Writing 0x00000021 to VGA at address 0x00008004",
         "testbench check", error_on_match = False,
         error_msg = "testbench failed"))
     tester.add_makefile_test("forwarding_iosystem.bit", [], 
