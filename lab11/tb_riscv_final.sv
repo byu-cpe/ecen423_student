@@ -14,7 +14,7 @@ module tb_riscv_final #(
     string TEXT_MEM = "final_text.mem",
     string DATA_MEM = "final_data.mem",
     int PRINT_MEMORY = 0,
-    int MAX_INSTRUCTION_COUNT = 1000000 // 2000
+    int MAX_INSTRUCTION_COUNT = 10000000 // large number to prevent infinite loops in case of errors (simulation will stop if this count is reached without seeing EBREAK instruction
     ) ();
 
     import tb_riscv_pkg::*;
