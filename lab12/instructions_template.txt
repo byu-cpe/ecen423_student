@@ -1,6 +1,6 @@
-ECEN 323 Lab #12 Project Instructions
+ECEN 423 Lab #12 Project Instructions
 
-Name:<Full Name> (<Net ID>)
+Name: <Full Name> (<Net ID>)
 
 Title: <Project Title>
 
@@ -14,3 +14,4 @@ Custom background: [Describe your custom background]
 Procedures: [List the four procedures you created]
 Buttons: [Describe what the buttons do]
 LEDs and 7 Segment Display: [Describe how the seven segment display and LEDs are used]
+Hardware Modifications: [Describe the modificaitons you made to the hardware]
