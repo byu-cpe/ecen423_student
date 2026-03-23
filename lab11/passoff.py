@@ -19,7 +19,7 @@ def main():
     sim_test1.add_test(repo_test.file_regex_check(tester, "sim_riscv_final.log", "===== TEST PASSED =====",
         "testbench check", error_on_match = False,
         error_msg = "testbench failed"))
-    sim_test2 = tester.add_makefile_test("fib_main.log", [], ["fib_main.log"], timeout_seconds= 60*40)
+    sim_test2 = tester.add_makefile_test("fib_main.log", [], ["fib_main.log"])
     sim_test2.add_test(repo_test.file_regex_check(tester, "fib_main.log", "s0\s+0x0000000f",
         "s0 check", error_on_match = False, error_msg = "s0 incorrect"))
     sim_test2.add_test(repo_test.file_regex_check(tester, "fib_main.log",
@@ -46,11 +46,13 @@ def main():
     sim_test2.add_test(repo_test.file_regex_check(tester, "fib_main.log",
         "Mem\[0x00002070\]\s0x00000090\s+0x000000e9\s+0x00000179\s+0x00000000",
         "Mem check", error_on_match = False, error_msg = "Mem incorrect"))
-    sim_test3 = tester.add_makefile_test("sim_riscv_final_fib", [], ["sim_riscv_final_fib.log"])
-    sim_test3.add_test(repo_test.file_regex_check(tester, "sim_riscv_final_fib.log", "===== TEST PASSED =====",
+    sim_test3 = tester.add_makefile_test("sim_riscv_final_fib", [], ["sim_riscv_final_fib.log"],
+                                        timeout_seconds=60*40)
+    sim_test3.add_test(repo_test.file_regex_check(tester, "sim_riscv_final_fib.log",
+                                                  "===== TEST PASSED =====",
         "testbench check", error_on_match = False, error_msg = "testbench failed"))
     tester.add_makefile_test("riscv_final.dcp", ["riscv_final.sv"], 
-                             ["riscv_final.log"])
+                             ["riscv_final.log"], timeout_seconds=60*20)
     tester.run_main()
 
 if __name__ == "__main__":
