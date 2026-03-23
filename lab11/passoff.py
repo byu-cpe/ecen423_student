@@ -19,7 +19,7 @@ def main():
     sim_test1.add_test(repo_test.file_regex_check(tester, "sim_riscv_final.log", "===== TEST PASSED =====",
         "testbench check", error_on_match = False,
         error_msg = "testbench failed"))
-    sim_test2 = tester.add_makefile_test("fib_main.log", [], ["fib_main.log"])
+    sim_test2 = tester.add_makefile_test("fib_main.log", [], ["fib_main.log"], timeout_seconds= 60*40)
     sim_test2.add_test(repo_test.file_regex_check(tester, "fib_main.log", "s0\s+0x0000000f",
         "s0 check", error_on_match = False, error_msg = "s0 incorrect"))
     sim_test2.add_test(repo_test.file_regex_check(tester, "fib_main.log",
