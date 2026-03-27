@@ -10,8 +10,13 @@ Instructions:
 You will lose points if the TA is unclear how to play or restart your game.]
 
 Custom characters: [Describe your new characters for your project]
+
 Custom background: [Describe your custom background]
+
 Procedures: [List the four procedures you created]
+
 Buttons: [Describe what the buttons do]
+
 LEDs and 7 Segment Display: [Describe how the seven segment display and LEDs are used]
-Hardware Modifications: [Describe the modificaitons you made to the hardware]
+
+Hardware Modifications: [Describe the modifications you made to the hardware. Indicate which files were modified or added to supplement your processor.]
